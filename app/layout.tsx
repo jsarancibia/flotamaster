@@ -1,0 +1,37 @@
+import type { Metadata } from 'next'
+import { Inter, Open_Sans } from 'next/font/google'
+import './globals.css'
+import { ThemeProvider } from '@/components/ThemeProvider'
+
+const inter = Inter({ 
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+})
+
+const openSans = Open_Sans({ 
+  subsets: ['latin'],
+  variable: '--font-open-sans',
+  display: 'swap',
+})
+
+export const metadata: Metadata = {
+  title: 'FlotaMaster - Administración de Flota de Taxis y Colectivos',
+  description: 'Sistema integral para administrar taxis y colectivos. Controla mantenimientos, rentas semanales y ganancias de tu flota vehicular.',
+}
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="es" className={`${inter.variable} ${openSans.variable}`} suppressHydrationWarning>
+      <body className="font-body bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 antialiased">
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
+      </body>
+    </html>
+  )
+}

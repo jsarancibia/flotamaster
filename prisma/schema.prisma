@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Vehicle {
+  id          String   @id @default(cuid())
+  plate       String   @unique
+  type        String   // "taxi" or "colectivo"
+  brand       String
+  model       String
+  year        Int
+  color       String?
+  status      String   @default("disponible") // disponible, alquilado, mantenimiento
+  purchaseDate DateTime?
+  purchasePrice Float?
+  weeklyRate  Float    @default(120000) // Default weekly payment rate
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  driver      Driver?
+  rentals     Rental[]
+  maintenances Maintenance[]
+  expenses    Expense[]
+  incomes     Income[]
+  weeklyPayments WeeklyPayment[]
+}
+
+model Driver {
+  id          String   @id @default(cuid())
+  name        String
+  phone       String?
+  license     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vehicle     Vehicle? @relation(fields: [vehicleId], references: [id])
+  vehicleId   String?  @unique
+  rentals     Rental[]
+  weeklyPayments WeeklyPayment[]
+}
+
+model Rental {
+  id            String   @id @default(cuid())
+  vehicle       Vehicle  @relation(fields: [vehicleId], references: [id])
+  vehicleId     String
+  driver        Driver   @relation(fields: [driverId], references: [id])
+  driverId      String
+  weeklyAmount  Float    @default(120000)
+  startDate     DateTime @default(now())
+  endDate       DateTime?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Maintenance {
+  id          String   @id @default(cuid())
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
+  vehicleId   String
+  type        String   // "preventivo" or "correctivo"
+  category    String   // "revision", "cambio_aceite", "frenos", "llantas", "motor", "otro"
+  description String
+  cost        Float
+  date        DateTime @default(now())
+  status      String   @default("pendiente") // pendiente, completado
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  expense     Expense?
+}
+
+model Expense {
+  id            String   @id @default(cuid())
+  vehicle       Vehicle  @relation(fields: [vehicleId], references: [id])
+  vehicleId     String
+  category      String   // "mantenimiento", "combustible", "seguro", "impuesto", "otro"
+  description   String
+  amount        Float
+  date          DateTime @default(now())
+  expenseDate   DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  maintenance   Maintenance? @relation(fields: [maintenanceId], references: [id])
+  maintenanceId String? @unique
+}
+
+model Income {
+  id          String   @id @default(cuid())
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
+  vehicleId   String
+  description String   // "alquiler_semanal", "otro"
+  amount      Float
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model WeeklyPayment {
+  id          String   @id @default(cuid())
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
+  vehicleId   String
+  driver      Driver   @relation(fields: [driverId], references: [id])
+  driverId    String
+  amount      Float
+  weekNumber  Int      // Week number (1-52)
+  year        Int      // Year
+  weekStart   DateTime // Start of the week (Monday)
+  weekEnd     DateTime // End of the week (Sunday)
+  paid        Boolean  @default(false)
+  paidDate    DateTime?
+  paymentDate DateTime @default(now()) // Real payment date for monthly filtering
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([vehicleId, weekNumber, year])
+}
