@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 function getWeeksInMonth(year: number, month: number) {
   const weeks: { weekNumber: number; start: Date; end: Date }[] = []
   const firstDay = new Date(year, month, 1)

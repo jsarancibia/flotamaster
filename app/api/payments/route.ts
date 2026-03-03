@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 function getWeekDates(year: number, weekNumber: number) {
   const simple = new Date(year, 0, 1 + (weekNumber - 1) * 7)
   const dow = simple.getDay()
