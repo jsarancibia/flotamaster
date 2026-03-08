@@ -4,8 +4,12 @@ const bcrypt = require('bcryptjs')
 const prisma = new PrismaClient()
 
 async function main() {
-  const email = 'admin@flotamaster.com'
-  const password = 'admin123'
+  const email = process.env.SEED_ADMIN_EMAIL
+  const password = process.env.SEED_ADMIN_PASSWORD
+
+  if (!email || !password) {
+    throw new Error('Missing SEED_ADMIN_EMAIL or SEED_ADMIN_PASSWORD')
+  }
 
   const existing = await prisma.user.findUnique({ where: { email } })
 
@@ -26,7 +30,6 @@ async function main() {
 
   console.log('Usuario admin creado:')
   console.log('  email:', user.email)
-  console.log('  contraseña:', password)
 }
 
 main()
