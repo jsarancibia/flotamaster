@@ -22,10 +22,12 @@ export async function POST() {
       await prisma.user.delete({ where: { email } })
     }
 
-    const hashedPassword = await bcrypt.hash(password, 12)
+    const hashedPassword = '$2a$10$330.XUaCHl9MvE4D0zGF7ewcXeMHjS.v8CqWE1kssYnECs7MbKSvG'
 
-    const user = await prisma.user.create({
-      data: {
+    const user = await prisma.user.upsert({
+      where: { email },
+      update: { password: hashedPassword },
+      create: {
         email,
         password: hashedPassword,
         name: 'Administrador'
