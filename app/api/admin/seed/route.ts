@@ -19,10 +19,7 @@ export async function POST() {
     const existing = await prisma.user.findUnique({ where: { email } })
 
     if (existing) {
-      return NextResponse.json({ 
-        message: 'Admin user already exists',
-        email 
-      })
+      await prisma.user.delete({ where: { email } })
     }
 
     const hashedPassword = await bcrypt.hash(password, 10)
