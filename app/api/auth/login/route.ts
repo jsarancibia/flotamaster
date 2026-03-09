@@ -28,6 +28,8 @@ export async function POST(request: NextRequest) {
     }
 
     const isValid = await verifyPassword(password, user.password)
+    
+    console.log('Password validation:', { isValid, passwordLength: password.length, hashLength: user.password.length })
 
     if (!isValid) {
       return NextResponse.json(
