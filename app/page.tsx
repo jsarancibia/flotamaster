@@ -60,9 +60,9 @@ export default function Home() {
             <span className="font-heading font-bold text-xl text-primary">FlotaMaster</span>
           </Link>
           <div className="hidden md:flex items-center gap-8">
-            <a href="#servicios" className="text-gray-600 hover:text-primary transition-colors font-medium cursor-pointer">Servicios</a>
-            <a href="#beneficios" className="text-gray-600 hover:text-primary transition-colors font-medium cursor-pointer">Beneficios</a>
-            <a href="#contacto" className="text-gray-600 hover:text-primary transition-colors font-medium cursor-pointer">Contacto</a>
+            <a href="#modulos" className="text-gray-600 hover:text-primary transition-colors font-medium cursor-pointer">Módulos</a>
+            <a href="#operacion" className="text-gray-600 hover:text-primary transition-colors font-medium cursor-pointer">Operación</a>
+            <a href="#soporte" className="text-gray-600 hover:text-primary transition-colors font-medium cursor-pointer">Soporte</a>
             <Link 
               href="/login"
               className="bg-primary text-white px-6 py-2.5 rounded-xl font-medium hover:bg-primary-800 transition-all hover:shadow-lg hover:shadow-primary/30 cursor-pointer"
@@ -103,26 +103,26 @@ export default function Home() {
             <div>
               <motion.div variants={fadeInUp} className="inline-flex items-center gap-2 bg-accent-light px-4 py-2 rounded-full mb-6">
                 <Star className="w-4 h-4 text-primary" />
-                <span className="text-primary font-medium text-sm">Líderes en administración de flota</span>
+                <span className="text-primary font-medium text-sm">Portal interno de operación</span>
               </motion.div>
               
               <motion.h1 
                 variants={fadeInUp}
                 className="font-heading text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6"
               >
-                Administra tu{' '}
+                Control y seguimiento de{' '}
                 <span className="text-primary bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
-                  flota de taxis
+                  tu flota
                 </span>{' '}
-                y colectivos
+                en un solo lugar
               </motion.h1>
               
               <motion.p 
                 variants={fadeInUp}
                 className="text-xl text-gray-600 mb-8 leading-relaxed"
               >
-                Control total de tu flota de vehículos. 
-                Mantenimientos, asignaciones y seguimiento en un solo lugar.
+                Accede al panel para gestionar vehículos, conductores y mantenimientos.
+                Diseñado para uso interno y control operativo.
               </motion.p>
               
               <motion.div variants={fadeInUp} className="flex flex-wrap gap-4">
@@ -134,27 +134,27 @@ export default function Home() {
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Link>
                 <a 
-                  href="#contacto"
+                  href="#modulos"
                   className="inline-flex items-center gap-2 bg-white text-primary px-8 py-4 rounded-2xl font-semibold border-2 border-primary/20 hover:border-primary transition-all cursor-pointer"
                 >
-                  Contactar
+                  Ver módulos
                 </a>
               </motion.div>
 
               <motion.div variants={fadeInUp} className="flex items-center gap-8 mt-12 pt-8 border-t border-gray-200">
                 <div>
-                  <p className="font-heading text-3xl font-bold text-primary">50+</p>
-                  <p className="text-gray-500">Vehículos gestionados</p>
+                  <p className="font-heading text-3xl font-bold text-primary">Panel</p>
+                  <p className="text-gray-500">Resumen operativo</p>
                 </div>
                 <div className="w-px h-12 bg-gray-200" />
                 <div>
-                  <p className="font-heading text-3xl font-bold text-primary">100%</p>
-                  <p className="text-gray-500">Control total</p>
+                  <p className="font-heading text-3xl font-bold text-primary">Gestión</p>
+                  <p className="text-gray-500">Vehículos y conductores</p>
                 </div>
                 <div className="w-px h-12 bg-gray-200" />
                 <div>
-                  <p className="font-heading text-3xl font-bold text-primary">24/7</p>
-                  <p className="text-gray-500">Disponibilidad</p>
+                  <p className="font-heading text-3xl font-bold text-primary">Control</p>
+                  <p className="text-gray-500">Mantenimientos y estado</p>
                 </div>
               </motion.div>
             </div>
@@ -214,7 +214,7 @@ export default function Home() {
       </section>
 
       {/* Services Section */}
-      <section id="servicios" className="py-24 bg-white">
+      <section id="modulos" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -224,10 +224,10 @@ export default function Home() {
             className="text-center mb-16"
           >
             <h2 className="font-heading text-4xl font-bold text-gray-900 mb-4">
-              Nuestros Servicios
+              Módulos del sistema
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Todo lo que necesitas para administrar tu flota de taxis y colectivos
+              Herramientas para la operación diaria y control interno.
             </p>
           </motion.div>
 
@@ -235,24 +235,24 @@ export default function Home() {
             {[
               {
                 icon: Car,
-                title: 'Gestión de Flota',
-                description: 'Control total de taxis y colectivos. Administra disponibilidad, asignaciones y seguimiento en tiempo real.',
+                title: 'Vehículos',
+                description: 'Administra tu flota: alta, edición, estado operativo y asignaciones.',
                 color: 'bg-primary',
-                features: ['Vehículos propios', 'Control de flota', 'Asignación dinámica']
+                features: ['Registro y edición', 'Estados y asignaciones', 'Búsqueda y control']
               },
               {
                 icon: Wrench,
                 title: 'Mantenimientos',
-                description: 'Registro y seguimiento de mantenimientos preventivos y correctivos. Mantén tus vehículos en óptimas condiciones.',
+                description: 'Registro y seguimiento de mantenimientos preventivos y correctivos.',
                 color: 'bg-orange-500',
                 features: ['Preventivo', 'Correctivo', 'Alertas automáticas']
               },
               {
                 icon: TrendingUp,
-                title: 'Control Financiero',
-                description: 'Registro y seguimiento de ingresos y egresos por vehículo para auditoría interna y reportes.',
+                title: 'Reportes internos',
+                description: 'Informes para seguimiento operativo y auditoría interna.',
                 color: 'bg-green-500',
-                features: ['Ganancias por auto', 'Gastos por auto', 'Reportes totales']
+                features: ['Exportaciones', 'Consolidación', 'Trazabilidad']
               },
             ].map((service, i) => (
               <motion.div
@@ -283,7 +283,7 @@ export default function Home() {
       </section>
 
       {/* Benefits Section */}
-      <section id="beneficios" className="py-24 bg-gradient-to-br from-primary to-primary-800 text-white overflow-hidden">
+      <section id="operacion" className="py-24 bg-gradient-to-br from-primary to-primary-800 text-white overflow-hidden">
         <div className="absolute inset-0">
           <div className="absolute top-0 left-1/4 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
           <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/30 rounded-full blur-3xl" />
@@ -298,19 +298,19 @@ export default function Home() {
             className="text-center mb-16"
           >
             <h2 className="font-heading text-4xl font-bold mb-4">
-              ¿Por qué elegir FlotaMaster?
+              Operación y control
             </h2>
             <p className="text-xl text-white/80 max-w-2xl mx-auto">
-              Una herramienta completa para la operación diaria de tu flota
+              Diseñado para equipos internos con foco en claridad y trazabilidad.
             </p>
           </motion.div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { icon: Clock, title: 'Ahorro de Tiempo', desc: 'Automatiza el seguimiento de mantenimientos y tareas operativas' },
-              { icon: Shield, title: 'Control Total', desc: 'Visibilidad completa de tu flota en tiempo real' },
-              { icon: TrendingUp, title: 'Gestión y Reportes', desc: 'Centraliza la información para tomar mejores decisiones' },
-              { icon: Users, title: 'Gestión de Choferes', desc: 'Asigna y controla a tus conductores fácilmente' },
+              { icon: Clock, title: 'Flujos claros', desc: 'Altas, edición y estados operativos con formularios consistentes.' },
+              { icon: Shield, title: 'Control interno', desc: 'Acceso mediante inicio de sesión y acciones trazables.' },
+              { icon: TrendingUp, title: 'Indicadores', desc: 'Resumen operativo para priorizar tareas y mantenimientos.' },
+              { icon: Users, title: 'Equipo', desc: 'Gestión de conductores y asignaciones de forma centralizada.' },
             ].map((benefit, i) => (
               <motion.div
                 key={i}
@@ -360,16 +360,16 @@ export default function Home() {
             className="bg-white rounded-3xl p-12 shadow-2xl shadow-primary/10 border border-primary/10"
           >
             <h2 className="font-heading text-3xl font-bold text-gray-900 mb-4">
-              ¿Listo para optimizar tu flota?
+              Acceso al sistema
             </h2>
             <p className="text-xl text-gray-600 mb-8">
-              Accede al panel de administración y toma control total de tu negocio
+              Ingresa al panel para comenzar la gestión operativa.
             </p>
             <Link 
               href="/login"
               className="inline-flex items-center gap-2 bg-primary text-white px-8 py-4 rounded-2xl font-semibold hover:bg-primary-800 transition-all hover:shadow-xl hover:shadow-primary/30 group cursor-pointer"
             >
-              Ir al Panel de Administración
+              Ir al Panel
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
           </motion.div>
@@ -377,7 +377,7 @@ export default function Home() {
       </section>
 
       {/* Contact Section */}
-      <section id="contacto" className="py-24 bg-white">
+      <section id="soporte" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -386,18 +386,18 @@ export default function Home() {
             className="text-center mb-16"
           >
             <h2 className="font-heading text-4xl font-bold text-gray-900 mb-4">
-              Contáctanos
+              Soporte
             </h2>
             <p className="text-xl text-gray-600">
-              Estamos aquí para ayudarte
+              Si necesitas ayuda, contacta al administrador del sistema.
             </p>
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-8">
             {[
-              { icon: Phone, title: 'Teléfono', content: '+57 300 123 4567' },
-              { icon: Mail, title: 'Email', content: 'contacto@flotamaster.com' },
-              { icon: MapPin, title: 'Ubicación', content: 'Colombia' },
+              { icon: Phone, title: 'Canal interno', content: 'Mesa de ayuda / Administrador' },
+              { icon: Mail, title: 'Correo', content: 'Soporte interno' },
+              { icon: MapPin, title: 'Entorno', content: 'Uso privado' },
             ].map((contact, i) => (
               <motion.div
                 key={i}
