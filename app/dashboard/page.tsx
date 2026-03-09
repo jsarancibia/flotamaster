@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Car, Users, Wrench, TrendingUp, DollarSign, AlertCircle } from 'lucide-react'
+import { Car, Users, Wrench, TrendingUp, FileText, Fuel, AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react'
 
 interface Maintenance {
   id: string
@@ -82,18 +82,18 @@ export default function DashboardPage() {
 
   const cards = stats ? [
     {
-      title: 'Total Vehículos',
+      title: 'Vehículos',
       value: stats.totalVehicles,
       icon: Car,
-      color: 'bg-primary',
-      subtitle: `${stats.availableVehicles} disponibles, ${stats.rentedVehicles} alquilados`
+      color: 'bg-blue-500',
+      subtitle: `${stats.availableVehicles} disponibles • ${stats.rentedVehicles} en ruta`
     },
     {
-      title: 'Choferes',
+      title: 'Conductores',
       value: stats.totalDrivers,
       icon: Users,
       color: 'bg-green-500',
-      subtitle: 'Choferes activos'
+      subtitle: 'Conductores activos'
     },
     {
       title: 'Mantenimientos',
@@ -102,6 +102,27 @@ export default function DashboardPage() {
       color: 'bg-orange-500',
       subtitle: 'Pendientes',
       alert: stats.pendingMaintenances > 0
+    },
+    {
+      title: 'Ingresos',
+      value: '$0',
+      icon: TrendingUp,
+      color: 'bg-emerald-500',
+      subtitle: 'Este mes'
+    },
+    {
+      title: 'Gastos',
+      value: '$0',
+      icon: FileText,
+      color: 'bg-purple-500',
+      subtitle: 'Este mes'
+    },
+    {
+      title: 'Documentos',
+      value: 0,
+      icon: AlertTriangle,
+      color: 'bg-red-500',
+      subtitle: 'Por vencer'
     },
   ] : []
 
@@ -121,23 +142,23 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
         {cards.map((card, i) => (
           <div
             key={i}
-            className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow"
+            className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
           >
-            <div className="flex items-start justify-between mb-4">
-              <div className={`w-12 h-12 ${card.color} rounded-xl flex items-center justify-center`}>
-                <card.icon className="w-6 h-6 text-white" />
+            <div className="flex items-start justify-between mb-3">
+              <div className={`w-10 h-10 ${card.color} rounded-lg flex items-center justify-center`}>
+                <card.icon className="w-5 h-5 text-white" />
               </div>
               {card.alert && (
-                <AlertCircle className="w-5 h-5 text-orange-500" />
+                <AlertCircle className="w-4 h-4 text-orange-500" />
               )}
             </div>
-            <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">{card.title}</p>
-            <p className="font-heading text-2xl font-bold text-gray-900 dark:text-white">{card.value}</p>
-            <p className="text-gray-500 dark:text-gray-500 text-xs mt-1">{card.subtitle}</p>
+            <p className="text-gray-500 dark:text-gray-400 text-xs mb-1">{card.title}</p>
+            <p className="font-heading text-xl font-bold text-gray-900 dark:text-white">{card.value}</p>
+            <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">{card.subtitle}</p>
           </div>
         ))}
       </div>

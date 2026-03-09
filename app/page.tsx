@@ -67,7 +67,7 @@ export default function Home() {
               href="/login"
               className="bg-primary text-white px-6 py-2.5 rounded-xl font-medium hover:bg-primary-800 transition-all hover:shadow-lg hover:shadow-primary/30 cursor-pointer"
             >
-              Admin Login
+              Iniciar Sesión
             </Link>
           </div>
         </div>
@@ -121,8 +121,8 @@ export default function Home() {
                 variants={fadeInUp}
                 className="text-xl text-gray-600 mb-8 leading-relaxed"
               >
-                Control total de tu negocio de alquiler de vehículos. 
-                Mantenimientos,rentas semanales y ganancias en un solo lugar.
+                Control total de tu flota de vehículos. 
+                Mantenimientos, asignaciones y seguimiento en un solo lugar.
               </motion.p>
               
               <motion.div variants={fadeInUp} className="flex flex-wrap gap-4">
@@ -130,7 +130,7 @@ export default function Home() {
                   href="/login"
                   className="inline-flex items-center gap-2 bg-primary text-white px-8 py-4 rounded-2xl font-semibold hover:bg-primary-800 transition-all hover:shadow-xl hover:shadow-primary/30 group cursor-pointer"
                 >
-                  Comenzar Ahora
+                  Acceder al Panel
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Link>
                 <a 
@@ -143,13 +143,18 @@ export default function Home() {
 
               <motion.div variants={fadeInUp} className="flex items-center gap-8 mt-12 pt-8 border-t border-gray-200">
                 <div>
-                  <p className="font-heading text-3xl font-bold text-primary">$120K</p>
-                  <p className="text-gray-500">por semana</p>
+                  <p className="font-heading text-3xl font-bold text-primary">50+</p>
+                  <p className="text-gray-500">Vehículos gestionados</p>
                 </div>
                 <div className="w-px h-12 bg-gray-200" />
                 <div>
                   <p className="font-heading text-3xl font-bold text-primary">100%</p>
                   <p className="text-gray-500">Control total</p>
+                </div>
+                <div className="w-px h-12 bg-gray-200" />
+                <div>
+                  <p className="font-heading text-3xl font-bold text-primary">24/7</p>
+                  <p className="text-gray-500">Disponibilidad</p>
                 </div>
               </motion.div>
             </div>
@@ -230,10 +235,10 @@ export default function Home() {
             {[
               {
                 icon: Car,
-                title: 'Alquiler de Vehículos',
-                description: 'Taxis y colectivos en alquiler semanal a $120.000. Control de disponibilidad y asignación a choferes.',
+                title: 'Gestión de Flota',
+                description: 'Control total de taxis y colectivos. Administra disponibilidad, asignaciones y seguimiento en tiempo real.',
                 color: 'bg-primary',
-                features: ['Vehículos propios', 'Contratos semanales', 'Control de flota']
+                features: ['Vehículos propios', 'Control de flota', 'Asignación dinámica']
               },
               {
                 icon: Wrench,
@@ -330,7 +335,7 @@ export default function Home() {
             className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-8"
           >
             {[
-              { number: '$120K', label: 'Por semana' },
+              { number: '50+', label: 'Vehículos' },
               { number: '100%', label: 'Control' },
               { number: '24/7', label: 'Disponibilidad' },
               { number: '0', label: 'Complejidad' },

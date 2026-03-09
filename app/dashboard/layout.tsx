@@ -8,8 +8,10 @@ import {
   TrendingUp, 
   LogOut,
   LayoutDashboard,
-  Sun,
-  Moon
+  FileText,
+  Fuel,
+  Settings,
+  Receipt
 } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
 
@@ -25,9 +27,9 @@ export default async function DashboardLayout({
   }
 
   const navItems = [
-    { href: '/dashboard', icon: LayoutDashboard, label: 'Resumen' },
+    { href: '/dashboard', icon: LayoutDashboard, label: 'Panel' },
     { href: '/dashboard/vehicles', icon: Car, label: 'Vehículos' },
-    { href: '/dashboard/drivers', icon: Users, label: 'Choferes' },
+    { href: '/dashboard/drivers', icon: Users, label: 'Conductores' },
     { href: '/dashboard/maintenances', icon: Wrench, label: 'Mantenimientos' },
     { href: '/dashboard/finances', icon: TrendingUp, label: 'Finanzas' },
   ]
