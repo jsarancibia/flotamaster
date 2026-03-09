@@ -169,7 +169,7 @@ export default function Home() {
                   <div className="bg-gradient-to-br from-primary to-secondary rounded-2xl p-6 text-white">
                     <Car className="w-8 h-8 mb-3 opacity-80" />
                     <p className="text-2xl font-bold">Taxis</p>
-                    <p className="text-sm opacity-80">Alquiler semanal</p>
+                    <p className="text-sm opacity-80">Gestión operativa</p>
                   </div>
                   <div className="bg-gradient-to-br from-accent-light to-white rounded-2xl p-6 border border-primary/10">
                     <Users className="w-8 h-8 text-primary mb-3" />
@@ -180,7 +180,7 @@ export default function Home() {
                 <div className="mt-4 grid grid-cols-3 gap-3">
                   {[
                     { icon: Wrench, label: 'Mantenimientos', color: 'bg-orange-100 text-orange-600' },
-                    { icon: TrendingUp, label: 'Ganancias', color: 'bg-green-100 text-green-600' },
+                    { icon: TrendingUp, label: 'Indicadores', color: 'bg-green-100 text-green-600' },
                     { icon: Shield, label: 'Control', color: 'bg-purple-100 text-purple-600' },
                   ].map((item, i) => (
                     <div key={i} className={`${item.color} rounded-xl p-4 text-center`}>
@@ -250,7 +250,7 @@ export default function Home() {
               {
                 icon: TrendingUp,
                 title: 'Control Financiero',
-                description: 'Tracking completo de ganancias y gastos por vehículo. Sabrás exactamente cuánto ganas con cada taxi.',
+                description: 'Registro y seguimiento de ingresos y egresos por vehículo para auditoría interna y reportes.',
                 color: 'bg-green-500',
                 features: ['Ganancias por auto', 'Gastos por auto', 'Reportes totales']
               },
@@ -301,15 +301,15 @@ export default function Home() {
               ¿Por qué elegir FlotaMaster?
             </h2>
             <p className="text-xl text-white/80 max-w-2xl mx-auto">
-              La herramienta más completa para tu negocio de alquiler de taxis
+              Una herramienta completa para la operación diaria de tu flota
             </p>
           </motion.div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { icon: Clock, title: 'Ahorro de Tiempo', desc: 'Automatiza el seguimiento de mantenimientos y rentals' },
+              { icon: Clock, title: 'Ahorro de Tiempo', desc: 'Automatiza el seguimiento de mantenimientos y tareas operativas' },
               { icon: Shield, title: 'Control Total', desc: 'Visibilidad completa de tu flota en tiempo real' },
-              { icon: TrendingUp, title: 'Maximiza Ganancias', desc: 'Optimiza el rendimiento de cada vehículo' },
+              { icon: TrendingUp, title: 'Gestión y Reportes', desc: 'Centraliza la información para tomar mejores decisiones' },
               { icon: Users, title: 'Gestión de Choferes', desc: 'Asigna y controla a tus conductores fácilmente' },
             ].map((benefit, i) => (
               <motion.div

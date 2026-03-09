@@ -17,7 +17,7 @@ const openSans = Open_Sans({
 
 export const metadata: Metadata = {
   title: 'FlotaMaster - Administración de Flota de Taxis y Colectivos',
-  description: 'Sistema integral para administrar taxis y colectivos. Controla mantenimientos, rentas semanales y ganancias de tu flota vehicular.',
+  description: 'Sistema integral para administrar taxis y colectivos. Controla mantenimientos, asignaciones y operación diaria de tu flota vehicular.',
 }
 
 export default function RootLayout({

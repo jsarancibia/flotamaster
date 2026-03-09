@@ -88,7 +88,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-white text-gray-900 placeholder-gray-400"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-white !text-gray-900 placeholder:text-gray-400 caret-gray-900"
                 placeholder="correo@ejemplo.com"
                 autoComplete="email"
               />
@@ -105,7 +105,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all pr-12 bg-white text-gray-900 placeholder-gray-400"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all pr-12 bg-white !text-gray-900 placeholder:text-gray-400 caret-gray-900"
                   placeholder="Ingresa tu contraseña"
                   autoComplete="current-password"
                 />

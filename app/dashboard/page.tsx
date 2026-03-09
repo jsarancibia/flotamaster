@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Car, Users, Wrench, TrendingUp, FileText, Fuel, AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react'
+import { Car, Users, Wrench, FileText, Fuel, AlertTriangle, AlertCircle } from 'lucide-react'
 
 interface Maintenance {
   id: string
   description: string
-  cost: number
   status: string
   vehicle: { plate: string }
 }
@@ -72,14 +71,6 @@ export default function DashboardPage() {
     }
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0
-    }).format(amount)
-  }
-
   const cards = stats ? [
     {
       title: 'Vehículos',
@@ -104,25 +95,18 @@ export default function DashboardPage() {
       alert: stats.pendingMaintenances > 0
     },
     {
-      title: 'Ingresos',
-      value: '$0',
-      icon: TrendingUp,
-      color: 'bg-emerald-500',
-      subtitle: 'Este mes'
-    },
-    {
-      title: 'Gastos',
-      value: '$0',
-      icon: FileText,
-      color: 'bg-purple-500',
-      subtitle: 'Este mes'
-    },
-    {
       title: 'Documentos',
       value: 0,
       icon: AlertTriangle,
       color: 'bg-red-500',
       subtitle: 'Por vencer'
+    },
+    {
+      title: 'Combustible',
+      value: 0,
+      icon: Fuel,
+      color: 'bg-indigo-500',
+      subtitle: 'Registros del mes'
     },
   ] : []
 
@@ -190,7 +174,6 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-medium text-gray-900 dark:text-white">{formatCurrency(m.cost)}</p>
                   <p className={`text-sm ${
                     m.status === 'pendiente' ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'
                   }`}>
