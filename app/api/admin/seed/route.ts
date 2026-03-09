@@ -6,8 +6,8 @@ const prisma = new PrismaClient()
 
 export async function POST() {
   try {
-    const email = process.env.SEED_ADMIN_EMAIL
-    const password = process.env.SEED_ADMIN_PASSWORD
+    const email = process.env.SEED_ADMIN_EMAIL?.trim() || ''
+    const password = process.env.SEED_ADMIN_PASSWORD?.trim() || ''
 
     if (!email || !password) {
       return NextResponse.json(
