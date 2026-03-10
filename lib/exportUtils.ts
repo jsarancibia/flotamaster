@@ -18,6 +18,14 @@ const formatDate = (date: string | Date) => {
   })
 }
 
+const formatDateDMY = (date: string | Date) => {
+  const d = new Date(date)
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yyyy = String(d.getFullYear())
+  return `${dd}-${mm}-${yyyy}`
+}
+
 export function exportFinanceReportPDF(data: any) {
   const doc = new jsPDF()
   const { period, weeks, vehicles, grandTotals, weeklyTotals } = data
@@ -263,4 +271,150 @@ export function exportMaintenanceReportExcel(data: any) {
   XLSX.utils.book_append_sheet(wb, wsSummary, 'Resumen')
 
   XLSX.writeFile(wb, `reporte-mantenimiento-${period.monthName.toLowerCase()}-${period.year}.xlsx`)
+}
+
+export function exportFinanzasResumenPDF(input: {
+  pagos: Array<{
+    conductor: string
+    vehiculo: string
+    semana: string
+    fechaPago?: string
+    tipoPago?: string
+    monto: number
+    estado: string
+  }>
+  totalRecaudado: number
+  semanaInicio: string
+  semanaFin: string
+}) {
+  const doc = new jsPDF()
+
+  doc.setFontSize(18)
+  doc.text('Resumen Financiero FlotaMaster', 14, 20)
+
+  doc.setFontSize(12)
+  doc.text(`Semana: ${formatDate(input.semanaInicio)} - ${formatDate(input.semanaFin)}`, 14, 30)
+  doc.text(`Fecha de generación: ${formatDate(new Date())}`, 14, 36)
+
+  const rows = input.pagos.map((p) => {
+    return [
+      p.conductor,
+      p.vehiculo,
+      p.semana,
+      p.fechaPago ? formatDate(p.fechaPago) : '',
+      p.tipoPago === 'completo' ? 'Pago completo' : 'Abono',
+      formatCurrency(p.monto),
+      p.estado
+    ]
+  })
+
+  autoTable(doc, {
+    startY: 44,
+    head: [['Conductor', 'Vehículo', 'Semana', 'Fecha pago', 'Tipo', 'Monto', 'Estado']],
+    body: rows,
+    theme: 'striped',
+    headStyles: { fillColor: [79, 70, 229] },
+    styles: { fontSize: 9 },
+    columnStyles: { 5: { halign: 'right' } }
+  })
+
+  const finalY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 10 : 60
+  doc.setFontSize(12)
+  doc.text(`Total recaudado: ${formatCurrency(input.totalRecaudado)}`, 14, finalY)
+
+  doc.save('resumen-financiero-flotamaster.pdf')
+}
+
+export function exportReporteFinancieroSemanalPDF(input: {
+  pagos: Array<{
+    conductor: string
+    vehiculo: string
+    fechaPago: string
+    tipoPago: 'abono' | 'completo' | string
+    monto: number
+    semanaInicio: string
+    semanaFin: string
+  }>
+  semanaInicio: string
+  semanaFin: string
+  totalPagado: number
+  totalAbonos: number
+  totalCompletos: number
+}) {
+  const doc = new jsPDF()
+
+  doc.setFontSize(18)
+  doc.text('Reporte financiero semanal', 14, 20)
+
+  doc.setFontSize(12)
+  doc.text(`Semana: ${formatDateDMY(input.semanaInicio)} al ${formatDateDMY(input.semanaFin)}`, 14, 30)
+
+  const rows = input.pagos.map((p) => {
+    return [
+      p.conductor,
+      p.vehiculo,
+      formatDateDMY(p.fechaPago),
+      p.tipoPago === 'completo' ? 'Pago completo' : 'Abono',
+      formatCurrency(p.monto)
+    ]
+  })
+
+  autoTable(doc, {
+    startY: 40,
+    head: [['Conductor', 'Vehículo', 'Fecha', 'Tipo', 'Monto']],
+    body: rows,
+    theme: 'striped',
+    headStyles: { fillColor: [79, 70, 229] },
+    styles: { fontSize: 9 },
+    columnStyles: { 4: { halign: 'right' } }
+  })
+
+  const finalY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 10 : 60
+
+  doc.setFontSize(12)
+  doc.text(`Total pagado: ${formatCurrency(input.totalPagado)}`, 14, finalY)
+  doc.text(`Total de abonos: ${formatCurrency(input.totalAbonos)}`, 14, finalY + 6)
+  doc.text(`Total de pagos completos: ${formatCurrency(input.totalCompletos)}`, 14, finalY + 12)
+
+  doc.save('reporte-financiero-semanal.pdf')
+}
+
+export function exportReporteFinancieroSemanalExcel(input: {
+  pagos: Array<{
+    conductor: string
+    vehiculo: string
+    fechaPago: string
+    tipoPago: 'abono' | 'completo' | string
+    monto: number
+    semanaInicio: string
+    semanaFin: string
+  }>
+  totalPagado: number
+}) {
+  const wb = XLSX.utils.book_new()
+
+  const rows = input.pagos.map((p) => ({
+    'Conductor': p.conductor,
+    'Vehículo': p.vehiculo,
+    'Fecha Pago': formatDateDMY(p.fechaPago),
+    'Tipo Pago': p.tipoPago === 'completo' ? 'Pago completo' : 'Abono',
+    'Monto': p.monto,
+    'Semana Inicio': formatDateDMY(p.semanaInicio),
+    'Semana Fin': formatDateDMY(p.semanaFin)
+  }))
+
+  rows.push({
+    'Conductor': '',
+    'Vehículo': '',
+    'Fecha Pago': '',
+    'Tipo Pago': 'TOTAL',
+    'Monto': input.totalPagado,
+    'Semana Inicio': '',
+    'Semana Fin': ''
+  })
+
+  const ws = XLSX.utils.json_to_sheet(rows)
+  XLSX.utils.book_append_sheet(wb, ws, 'Reporte semanal')
+
+  XLSX.writeFile(wb, 'reporte-financiero-semanal.xlsx')
 }

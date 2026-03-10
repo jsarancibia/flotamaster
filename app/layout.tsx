@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter, Open_Sans } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
@@ -20,6 +20,11 @@ export const metadata: Metadata = {
   description: 'Sistema integral para administrar taxis y colectivos. Controla mantenimientos, asignaciones y operación diaria de tu flota vehicular.',
 }
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -27,7 +32,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" className={`${inter.variable} ${openSans.variable}`} suppressHydrationWarning>
-      <body className="font-body bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 antialiased">
+      <body className="font-body bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 antialiased overflow-x-hidden">
         <ThemeProvider>
           {children}
         </ThemeProvider>

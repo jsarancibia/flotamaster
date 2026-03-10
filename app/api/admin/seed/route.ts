@@ -4,8 +4,24 @@ import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    const seedToken = process.env.SEED_ADMIN_TOKEN?.trim() || ''
+    if (!seedToken) {
+      return NextResponse.json(
+        { error: 'Missing SEED_ADMIN_TOKEN' },
+        { status: 500 }
+      )
+    }
+
+    const providedToken = request.headers.get('x-seed-token')?.trim() || ''
+    if (!providedToken || providedToken !== seedToken) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const email = process.env.SEED_ADMIN_EMAIL?.trim() || ''
     const password = process.env.SEED_ADMIN_PASSWORD?.trim() || ''
 
@@ -16,13 +32,7 @@ export async function POST() {
       )
     }
 
-    const existing = await prisma.user.findUnique({ where: { email } })
-
-    if (existing) {
-      await prisma.user.delete({ where: { email } })
-    }
-
-    const hashedPassword = '$2a$10$330.XUaCHl9MvE4D0zGF7ewcXeMHjS.v8CqWE1kssYnECs7MbKSvG'
+    const hashedPassword = await bcrypt.hash(password, 10)
 
     const user = await prisma.user.upsert({
       where: { email },

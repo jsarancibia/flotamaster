@@ -1,1066 +1,825 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
-  TrendingUp, 
-  DollarSign, 
-  Car, 
-  ArrowUpCircle, 
-  ArrowDownCircle, 
-  Plus, 
-  X, 
-  ChevronLeft, 
-  ChevronRight, 
-  CheckCircle, 
-  Circle, 
-  Trash2, 
-  FileText, 
-  FileSpreadsheet,
-  CreditCard,
-  Receipt,
-  Wallet,
+  TrendingUp,
+  Users,
+  Car,
   Calendar,
-  Filter,
-  Download
+  Plus,
+  X,
+  Download,
+  AlertCircle,
+  Pencil,
+  Trash2
 } from 'lucide-react'
-import { exportFinanceReportPDF, exportFinanceReportExcel } from '@/lib/exportUtils'
-
-interface Driver {
-  id: string
-  name: string
-}
-
-interface VehicleSummary {
-  id: string
-  plate: string
-  brand: string
-  model: string
-  weeklyRate: number
-}
-
-interface Payment {
-  id: string
-  amount: number
-  paid: boolean
-  paidDate: string | null
-  driverId: string
-  driver: { name: string }
-}
-
-interface Expense {
-  id: string
-  category: string
-  description: string
-  amount: number
-  maintenanceId: string | null
-}
-
-interface FinancialSummary {
-  vehicle: VehicleSummary
-  driver: Driver | null
-  payments: Payment[]
-  expenses: Expense[]
-  totalPayments: number
-  manualExpenses: number
-  maintenanceExpenses: number
-  totalExpenses: number
-  netProfit: number
-  paymentStatus: boolean
-  paymentId: string | null
-}
-
-interface WeekData {
-  weekNumber: number
-  year: number
-  weekStart: string
-  weekEnd: string
-  summary: FinancialSummary[]
-  totals: {
-    totalPayments: number
-    totalIncome: number
-    totalExpenses: number
-    netProfit: number
-  }
-}
+import { exportReporteFinancieroSemanalExcel, exportReporteFinancieroSemanalPDF } from '@/lib/exportUtils'
 
 interface Vehicle {
   id: string
   plate: string
   brand: string
   model: string
-  weeklyRate: number
 }
 
 interface DriverOption {
   id: string
   name: string
-  vehicleId: string | null
 }
 
-const EXPENSE_CATEGORIES = [
-  { value: 'mantenimiento', label: 'Mantenimiento' },
-  { value: 'combustible', label: 'Combustible' },
-  { value: 'seguro', label: 'Seguro' },
-  { value: 'impuesto', label: 'Impuesto' },
-  { value: 'lavado', label: 'Lavado' },
-  { value: 'peaje', label: 'Peaje' },
-  { value: 'otro', label: 'Otro' }
-]
+interface PagoSemanal {
+  id: string
+  conductorId: string
+  vehiculoId: string
+  fechaPago?: string
+  tipoPago?: 'abono' | 'completo' | string
+  semanaInicio: string
+  semanaFin: string
+  monto: number
+  estado: string
+  observaciones: string | null
+  createdAt: string
+  conductor: { id: string; name: string }
+  vehiculo: { id: string; plate: string; brand: string; model: string; weeklyRate?: number }
+}
 
-function getCurrentWeek() {
-  const now = new Date()
-  const start = new Date(now.getFullYear(), 0, 1)
-  const diff = now.getTime() - start.getTime()
-  const oneWeek = 1000 * 60 * 60 * 24 * 7
-  return Math.ceil(diff / oneWeek)
+interface ResumenFinanzas {
+  semanaInicio: string
+  semanaFin: string
+  totalRecaudadoSemana: number
+  totalRecaudadoMes: number
+  pagosPendientes: number
+  conductoresPagados: number
+}
+
+function formatDate(date: string | Date) {
+  return new Date(date).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    minimumFractionDigits: 0
+  }).format(amount)
+}
+
+function toISODateInputValue(date: Date) {
+  const d = new Date(date)
+  d.setHours(0, 0, 0, 0)
+  return d.toISOString().slice(0, 10)
+}
+
+function parseDateInputValue(value: string) {
+  const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(value)
+  if (!m) return null
+  const y = Number(m[1])
+  const mo = Number(m[2])
+  const da = Number(m[3])
+  if (!y || !mo || !da) return null
+  return new Date(y, mo - 1, da, 12, 0, 0, 0)
+}
+
+function formatWeekLabel(weekStart: Date, weekEnd: Date) {
+  return `Lunes ${formatDate(weekStart)} - Domingo ${formatDate(weekEnd)}`
+}
+
+function getWeekRangeFor(date: Date) {
+  const d = new Date(date)
+  const day = d.getDay() // 0 Sunday
+  const diffToMonday = (day + 6) % 7
+  const monday = new Date(d)
+  monday.setDate(d.getDate() - diffToMonday)
+  monday.setHours(0, 0, 0, 0)
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  sunday.setHours(23, 59, 59, 999)
+  return { weekStart: monday, weekEnd: sunday }
+}
+
+function getEstadoSemanal(totalAbonado: number, cuotaSemanal: number) {
+  if (!totalAbonado || totalAbonado <= 0) return 'Pendiente'
+  if (cuotaSemanal > 0 && totalAbonado >= cuotaSemanal) return 'Pagado'
+  return 'Parcial'
 }
 
 export default function FinancesPage() {
-  const [weekData, setWeekData] = useState<WeekData | null>(null)
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [drivers, setDrivers] = useState<DriverOption[]>([])
+  const [pagos, setPagos] = useState<PagoSemanal[]>([])
+  const [resumen, setResumen] = useState<ResumenFinanzas | null>(null)
   const [loading, setLoading] = useState(true)
-  const [weekNumber, setWeekNumber] = useState(getCurrentWeek())
-  const [year, setYear] = useState(new Date().getFullYear())
-  const [showPaymentModal, setShowPaymentModal] = useState(false)
-  const [showExpenseModal, setShowExpenseModal] = useState(false)
-  const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null)
+  const [showModal, setShowModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingPago, setEditingPago] = useState<PagoSemanal | null>(null)
+
+  const now = new Date()
+  const initialRange = getWeekRangeFor(now)
+  const [fechaSeleccionada, setFechaSeleccionada] = useState<string>(toISODateInputValue(now))
+  const [filtroConductorId, setFiltroConductorId] = useState<string>('')
+  const [filtroVehiculoId, setFiltroVehiculoId] = useState<string>('')
+  const [semanaInicio, setSemanaInicio] = useState<string>(toISODateInputValue(initialRange.weekStart))
+  const [semanaFin, setSemanaFin] = useState<string>(toISODateInputValue(initialRange.weekEnd))
+
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<'weekly' | 'monthly'>('weekly')
-  const [reportMonth, setReportMonth] = useState(new Date().getMonth())
-  const [reportYear, setReportYear] = useState(new Date().getFullYear())
-  const [reportData, setReportData] = useState<any>(null)
   const [exporting, setExporting] = useState(false)
   const router = useRouter()
 
-  const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
-
-  const fetchData = useCallback(async () => {
+  const fetchBaseData = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
-      const [financesRes, vehiclesRes, driversRes] = await Promise.all([
-        fetch(`/api/finances/summary?weekNumber=${weekNumber}&year=${year}`, { credentials: 'include' }),
+      const [vehiclesRes, driversRes] = await Promise.all([
         fetch('/api/vehicles', { credentials: 'include' }),
         fetch('/api/drivers', { credentials: 'include' })
       ])
 
-      const [financesData, vehiclesData, driversData] = await Promise.all([
-        financesRes.json(),
+      if (vehiclesRes.status === 401 || driversRes.status === 401) {
+        router.push('/login')
+        return
+      }
+      const [vehiclesData, driversData] = await Promise.all([
         vehiclesRes.json(),
         driversRes.json()
       ])
 
-      if (financesRes.ok) setWeekData(financesData)
-      if (vehiclesRes.ok) {
-        const vehiclesArray = Array.isArray(vehiclesData) 
-          ? vehiclesData 
-          : (vehiclesData?.vehicles || [])
-        setVehicles(vehiclesArray)
-      }
-      if (driversRes.ok) {
-        const driversArray = Array.isArray(driversData)
-          ? driversData
-          : (driversData?.drivers || [])
-        setDrivers(driversArray)
-      }
-    } catch (error) {
-      console.error('Error fetching data:', error)
+      if (vehiclesRes.ok) setVehicles((vehiclesData?.vehicles || []) as Vehicle[])
+      if (driversRes.ok) setDrivers((driversData?.drivers || []) as DriverOption[])
+    } catch (e) {
+      console.error('Error fetching base data:', e)
       setError('Error al cargar datos')
       setVehicles([])
       setDrivers([])
     } finally {
       setLoading(false)
     }
-  }, [weekNumber, year])
+  }, [router])
 
-  const fetchReportData = useCallback(async () => {
-    setLoading(true)
+  const handleDelete = async (id: string) => {
+    const ok = window.confirm('¿Seguro que deseas eliminar este pago? Esta acción no se puede deshacer.')
+    if (!ok) return
+    setError(null)
+    setSuccess(null)
     try {
-      const res = await fetch(`/api/reports/finances?month=${reportMonth}&year=${reportYear}`, { credentials: 'include' })
+      const res = await fetch(`/api/finances/payments?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.status === 401) {
+        router.push('/login')
+        return
+      }
+      if (!res.ok) {
+        setError(data?.error || 'Error al eliminar pago')
+        return
+      }
+      setSuccess('Pago eliminado')
+      await fetchPagosYResumen()
+      setTimeout(() => setSuccess(null), 2500)
+    } catch (e) {
+      console.error('Error deleting payment:', e)
+      setError('Error de conexión')
+    }
+  }
+
+  const openEdit = (p: PagoSemanal) => {
+    setEditingPago(p)
+    setShowEditModal(true)
+  }
+
+  const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setError(null)
+    setSuccess(null)
+    if (!editingPago) return
+
+    const formData = new FormData(e.currentTarget)
+    const fechaSel = formData.get('fechaPago') as string
+    const monto = formData.get('monto') as string
+    const tipoPago = (formData.get('tipoPago') as string) || 'abono'
+
+    const fechaPago = fechaSel ? parseDateInputValue(fechaSel) : null
+    if (!fechaPago) {
+      setError('Fecha de pago inválida')
+      return
+    }
+
+    try {
+      const res = await fetch('/api/finances/payments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          id: editingPago.id,
+          fechaPago: fechaPago.toISOString(),
+          tipoPago,
+          monto
+        })
+      })
+
       const data = await res.json()
-      setReportData(data)
-    } catch (error) {
-      console.error('Error fetching report:', error)
-      setError('Error al cargar reporte')
+      if (res.status === 401) {
+        router.push('/login')
+        return
+      }
+      if (!res.ok) {
+        setError(data?.error || 'Error al actualizar pago')
+        return
+      }
+      setSuccess('Pago actualizado')
+      setShowEditModal(false)
+      setEditingPago(null)
+      await fetchPagosYResumen()
+      setTimeout(() => setSuccess(null), 2500)
+    } catch (e) {
+      console.error('Error updating payment:', e)
+      setError('Error de conexión')
+    }
+  }
+
+  const fetchPagosYResumen = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const fechaBase = fechaSeleccionada ? parseDateInputValue(fechaSeleccionada) : null
+      const params = new URLSearchParams()
+      if (filtroConductorId) params.set('conductorId', filtroConductorId)
+      if (filtroVehiculoId) params.set('vehiculoId', filtroVehiculoId)
+      if (fechaBase) {
+        params.set('fechaSeleccionada', fechaBase.toISOString())
+      }
+
+      const rangeForSummary = fechaBase ? getWeekRangeFor(fechaBase) : null
+
+      const [pagosRes, resumenRes] = await Promise.all([
+        fetch(`/api/finances/payments?${params.toString()}`, { credentials: 'include' }),
+        fetch(`/api/finances/summary?${new URLSearchParams({
+          fechaSeleccionada: (fechaBase || undefined)?.toISOString() || '',
+          semanaInicio: (rangeForSummary ? rangeForSummary.weekStart : parseDateInputValue(semanaInicio))?.toISOString() || new Date().toISOString(),
+          semanaFin: (rangeForSummary ? rangeForSummary.weekEnd : parseDateInputValue(semanaFin))?.toISOString() || new Date().toISOString()
+        }).toString()}`, { credentials: 'include' })
+      ])
+
+      if (pagosRes.status === 401 || resumenRes.status === 401) {
+        router.push('/login')
+        return
+      }
+
+      const [pagosData, resumenData] = await Promise.all([
+        pagosRes.json(),
+        resumenRes.json()
+      ])
+
+      if (!pagosRes.ok) throw new Error(pagosData?.error || 'Error al cargar pagos')
+      if (!resumenRes.ok) throw new Error(resumenData?.error || 'Error al cargar resumen')
+
+      setPagos((pagosData?.pagos || []) as PagoSemanal[])
+      setResumen(resumenData as ResumenFinanzas)
+    } catch (e: any) {
+      console.error('Error fetching payments/summary:', e)
+      setError(e?.message || 'Error al cargar información')
+      setPagos([])
+      setResumen(null)
     } finally {
       setLoading(false)
     }
-  }, [reportMonth, reportYear])
+  }, [filtroConductorId, filtroVehiculoId, fechaSeleccionada, semanaInicio, semanaFin, router])
 
   useEffect(() => {
-    if (viewMode === 'weekly') {
-      fetchData()
-    } else {
-      fetchReportData()
+    if (!fechaSeleccionada) return
+    const fechaBase = parseDateInputValue(fechaSeleccionada)
+    if (!fechaBase) return
+    const range = getWeekRangeFor(fechaBase)
+    setSemanaInicio(toISODateInputValue(range.weekStart))
+    setSemanaFin(toISODateInputValue(range.weekEnd))
+  }, [fechaSeleccionada])
+
+  useEffect(() => {
+    fetchBaseData()
+  }, [fetchBaseData])
+
+  useEffect(() => {
+    fetchPagosYResumen()
+  }, [fetchPagosYResumen])
+
+  const totalTabla = useMemo(() => {
+    return pagos.reduce((sum, p) => sum + (Number(p.monto) || 0), 0)
+  }, [pagos])
+
+  const estadoPorGrupo = useMemo(() => {
+    const totals = new Map<string, { total: number; cuota: number }>()
+    for (const p of pagos) {
+      const cuota = Number(p?.vehiculo?.weeklyRate) || 0
+      const key = `${p.conductorId}::${p.vehiculoId}`
+      const current = totals.get(key)
+      if (!current) {
+        totals.set(key, { total: Number(p.monto) || 0, cuota })
+      } else {
+        current.total += Number(p.monto) || 0
+        current.cuota = current.cuota || cuota
+      }
     }
-  }, [viewMode, fetchData, fetchReportData])
+
+    const estado = new Map<string, { estado: string; total: number; cuota: number }>()
+    for (const [key, v] of Array.from(totals.entries())) {
+      estado.set(key, { estado: getEstadoSemanal(v.total, v.cuota), total: v.total, cuota: v.cuota })
+    }
+    return estado
+  }, [pagos])
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setError(null)
+    setSuccess(null)
+
+    const formData = new FormData(e.currentTarget)
+    const conductorId = formData.get('conductorId') as string
+    const vehiculoId = formData.get('vehiculoId') as string
+    const fechaSel = formData.get('fechaSeleccionada') as string
+    const monto = formData.get('monto') as string
+    const tipoPago = (formData.get('tipoPago') as string) || 'abono'
+    const observaciones = (formData.get('observaciones') as string) || ''
+
+    const fechaPago = fechaSel ? parseDateInputValue(fechaSel) : null
+
+    try {
+      if (!fechaPago) throw new Error('Fecha de pago inválida')
+      const res = await fetch('/api/finances/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          conductorId,
+          vehiculoId,
+          fechaPago: fechaPago.toISOString(),
+          fechaSeleccionada: fechaPago.toISOString(),
+          tipoPago,
+          monto,
+          observaciones: observaciones.trim() ? observaciones.trim() : null
+        })
+      })
+
+      const data = await res.json()
+
+      if (res.status === 401) {
+        router.push('/login')
+        return
+      }
+
+      if (!res.ok) {
+        setError(data?.error || 'Error al registrar pago')
+        return
+      }
+
+      setSuccess('Pago registrado')
+      setShowModal(false)
+      await fetchPagosYResumen()
+      setTimeout(() => setSuccess(null), 2500)
+    } catch (e) {
+      console.error('Error saving payment:', e)
+      setError('Error de conexión')
+    }
+  }
 
   const handleExportPDF = async () => {
-    if (!reportData) await fetchReportData()
-    const data = reportData || await (await fetch(`/api/reports/finances?month=${reportMonth}&year=${reportYear}`, { credentials: 'include' })).json()
     setExporting(true)
     try {
-      exportFinanceReportPDF(data)
+      const totalAbonos = pagos.reduce(
+        (sum, p) => sum + (((p.tipoPago || 'abono') === 'completo') ? 0 : (Number(p.monto) || 0)),
+        0
+      )
+      const totalCompletos = pagos.reduce(
+        (sum, p) => sum + (((p.tipoPago || 'abono') === 'completo') ? (Number(p.monto) || 0) : 0),
+        0
+      )
+
+      const start = parseDateInputValue(semanaInicio)
+      const end = parseDateInputValue(semanaFin)
+
+      exportReporteFinancieroSemanalPDF({
+        pagos: pagos.map((p) => ({
+          conductor: p.conductor?.name || 'N/A',
+          vehiculo: `${p.vehiculo?.plate || ''} ${p.vehiculo?.brand || ''} ${p.vehiculo?.model || ''}`.trim(),
+          fechaPago: (p.fechaPago as any) || p.createdAt,
+          tipoPago: (p.tipoPago as any) || 'abono',
+          monto: Number(p.monto) || 0,
+          semanaInicio: p.semanaInicio,
+          semanaFin: p.semanaFin
+        })),
+        semanaInicio: (start || new Date()).toISOString(),
+        semanaFin: (end || new Date()).toISOString(),
+        totalPagado: totalTabla,
+        totalAbonos,
+        totalCompletos
+      })
     } finally {
       setExporting(false)
     }
   }
 
   const handleExportExcel = async () => {
-    if (!reportData) await fetchReportData()
-    const data = reportData || await (await fetch(`/api/reports/finances?month=${reportMonth}&year=${reportYear}`, { credentials: 'include' })).json()
     setExporting(true)
     try {
-      exportFinanceReportExcel(data)
+      exportReporteFinancieroSemanalExcel({
+        pagos: pagos.map((p) => ({
+          conductor: p.conductor?.name || 'N/A',
+          vehiculo: `${p.vehiculo?.plate || ''} ${p.vehiculo?.brand || ''} ${p.vehiculo?.model || ''}`.trim(),
+          fechaPago: (p.fechaPago as any) || p.createdAt,
+          tipoPago: (p.tipoPago as any) || 'abono',
+          monto: Number(p.monto) || 0,
+          semanaInicio: p.semanaInicio,
+          semanaFin: p.semanaFin
+        })),
+        totalPagado: totalTabla
+      })
     } finally {
       setExporting(false)
     }
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0
-    }).format(amount)
-  }
-
-  const changeWeek = (delta: number) => {
-    let newWeek = weekNumber + delta
-    let newYear = year
-    
-    if (newWeek < 1) {
-      newWeek = 52
-      newYear -= 1
-    } else if (newWeek > 52) {
-      newWeek = 1
-      newYear += 1
-    }
-    
-    setWeekNumber(newWeek)
-    setYear(newYear)
-  }
-
-  const openPaymentModal = (vehicleId: string) => {
-    setSelectedVehicle(vehicleId)
-    setShowPaymentModal(true)
-    setError(null)
-  }
-
-  const openExpenseModal = (vehicleId: string) => {
-    setSelectedVehicle(vehicleId)
-    setShowExpenseModal(true)
-    setError(null)
-  }
-
-  const handleTogglePayment = async (paymentId: string, currentStatus: boolean) => {
-    try {
-      const payment = weekData?.summary
-        .flatMap(s => s.payments.map(p => ({ ...p, vehicleId: s.vehicle.id, driverId: p.driverId })))
-        .find(p => p.id === paymentId)
-      
-      if (!payment || !payment.driverId) return
-
-      const res = await fetch('/api/payments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          vehicleId: payment.vehicleId,
-          driverId: payment.driverId,
-          amount: payment.amount,
-          weekNumber,
-          year,
-          paid: !currentStatus
-        })
-      })
-
-      if (res.ok) {
-        setSuccess(!currentStatus ? 'Pago marcado como pagado' : 'Pago marcado como pendiente')
-        fetchData()
-        setTimeout(() => setSuccess(null), 3000)
-      }
-    } catch (error) {
-      console.error('Error toggling payment:', error)
-    }
-  }
-
-  const handleDeleteExpense = async (expenseId: string) => {
-    if (!confirm('¿Eliminar este gasto?')) return
-    
-    try {
-      const res = await fetch(`/api/expenses?id=${expenseId}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      })
-
-      if (res.ok) {
-        setSuccess('Gasto eliminado')
-        fetchData()
-        setTimeout(() => setSuccess(null), 3000)
-      }
-    } catch (error) {
-      console.error('Error deleting expense:', error)
-    }
-  }
-
-  const handlePaymentSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setError(null)
-    
-    const formData = new FormData(e.currentTarget)
-    const amount = parseFloat(formData.get('amount') as string)
-    const driverId = formData.get('driverId') as string
-    const paymentDate = formData.get('paymentDate') as string
-
-    if (!driverId) {
-      setError('Selecciona un chofer')
-      return
-    }
-
-    try {
-      const res = await fetch('/api/payments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          vehicleId: selectedVehicle,
-          driverId,
-          amount,
-          weekNumber,
-          year,
-          paid: true,
-          paymentDate
-        })
-      })
-
-      const data = await res.json()
-
-      if (!res.ok) {
-        setError(data.error || 'Error al registrar pago')
-        return
-      }
-
-      setSuccess('Pago registrado exitosamente')
-      setShowPaymentModal(false)
-      setSelectedVehicle(null)
-      fetchData()
-      setTimeout(() => setSuccess(null), 3000)
-    } catch (error) {
-      console.error('Error saving payment:', error)
-      setError('Error de conexión')
-    }
-  }
-
-  const handleExpenseSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setError(null)
-    
-    const formData = new FormData(e.currentTarget)
-
-    try {
-      const res = await fetch('/api/expenses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          vehicleId: selectedVehicle,
-          category: formData.get('category'),
-          description: formData.get('description'),
-          amount: formData.get('amount'),
-          expenseDate: formData.get('expense_date'),
-          weekNumber,
-          year
-        })
-      })
-
-      const data = await res.json()
-
-      if (!res.ok) {
-        setError(data.error || 'Error al registrar gasto')
-        return
-      }
-
-      setSuccess('Gasto registrado exitosamente')
-      setShowExpenseModal(false)
-      setSelectedVehicle(null)
-      fetchData()
-      setTimeout(() => setSuccess(null), 3000)
-    } catch (error) {
-      console.error('Error saving expense:', error)
-      setError('Error de conexión')
-    }
-  }
-
-  const vehiclesWithDriver = weekData?.summary.filter(s => s.driver) || []
-  const vehiclesWithoutDriver = weekData?.summary.filter(s => !s.driver) || []
-
   return (
     <div className="space-y-6">
-      {/* Header Section */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="flex-1">
-          <h1 className="font-heading text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-            {viewMode === 'weekly' ? 'Finanzas' : 'Reporte Mensual'}
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm">
-            {viewMode === 'weekly' 
-              ? `Hoy: ${new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}` 
-              : 'Resumen financiero mensual con exportaciones'}
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="font-heading text-3xl font-bold text-gray-900 dark:text-white">Finanzas</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Registro de pagos semanales</p>
         </div>
-        
-        {/* Action Buttons - Grouped */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          {/* View Toggle */}
-          <div className="flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-1">
-            <button
-              onClick={() => setViewMode('weekly')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                viewMode === 'weekly' 
-                  ? 'bg-primary text-white shadow-sm' 
-                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`}
-            >
-              <Calendar className="w-4 h-4" />
-              Semanal
-            </button>
-            <button
-              onClick={() => setViewMode('monthly')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                viewMode === 'monthly' 
-                  ? 'bg-primary text-white shadow-sm' 
-                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`}
-            >
-              <TrendingUp className="w-4 h-4" />
-              Mensual
-            </button>
-          </div>
 
-          {/* Export Buttons - Only show in monthly view */}
-          {viewMode === 'monthly' && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleExportPDF}
-                disabled={exporting}
-                className="flex items-center gap-2 px-4 py-2.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm font-medium hover:bg-red-200 dark:hover:bg-red-900/50 disabled:opacity-50 transition-all shadow-sm hover:shadow"
-              >
-                <FileText className="w-4 h-4" />
-                <span className="hidden sm:inline">PDF</span>
-              </button>
-              <button
-                onClick={handleExportExcel}
-                disabled={exporting}
-                className="flex items-center gap-2 px-4 py-2.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-xl text-sm font-medium hover:bg-green-200 dark:hover:bg-green-900/50 disabled:opacity-50 transition-all shadow-sm hover:shadow"
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                <span className="hidden sm:inline">Excel</span>
-              </button>
-            </div>
-          )}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-medium hover:bg-primary-800 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Registrar Pago
+          </button>
+          <button
+            onClick={handleExportPDF}
+            disabled={exporting || pagos.length === 0}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+          >
+            <Download className="w-5 h-5" />
+            Exportar PDF
+          </button>
+          <button
+            onClick={handleExportExcel}
+            disabled={exporting || pagos.length === 0}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+          >
+            <Download className="w-5 h-5" />
+            Exportar Excel
+          </button>
         </div>
       </div>
 
-      {viewMode === 'weekly' ? (
-        <>
-          {/* Week Navigation */}
-          <div className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={() => changeWeek(-1)} 
-                className="p-2.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl text-gray-600 dark:text-gray-300 transition-all"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <div className="flex items-center gap-2 px-4">
-                <Calendar className="w-5 h-5 text-primary dark:text-primary-400" />
-                <span className="font-semibold text-gray-900 dark:text-white min-w-[200px] text-center">
-                  {new Date().toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }).charAt(0).toUpperCase() + new Date().toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }).slice(1)}
-                </span>
-              </div>
-              <button 
-                onClick={() => changeWeek(1)} 
-                className="p-2.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl text-gray-600 dark:text-gray-300 transition-all"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-            
-            {/* Quick Stats Summary */}
-            <div className="hidden md:flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                <span className="text-sm text-gray-600 dark:text-gray-400">Ingresos:</span>
-                <span className="font-semibold text-green-600 dark:text-green-400">{formatCurrency(weekData?.totals.totalPayments || 0)}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                <span className="text-sm text-gray-600 dark:text-gray-400">Gastos:</span>
-                <span className="font-semibold text-red-600 dark:text-red-400">{formatCurrency(weekData?.totals.totalExpenses || 0)}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-primary"></div>
-                <span className="text-sm text-gray-600 dark:text-gray-400">Neto:</span>
-                <span className={`font-semibold ${(weekData?.totals.netProfit || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {formatCurrency(weekData?.totals.netProfit || 0)}
-                </span>
-              </div>
-            </div>
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-5 h-5" />
+            <span className="text-sm">{error}</span>
           </div>
-
-          {error && (
-            <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl flex items-center justify-between">
-              <span className="text-sm">{error}</span>
-              <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700"><X className="w-5 h-5" /></button>
-            </div>
-          )}
-
-          {success && (
-            <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-xl flex items-center justify-between">
-              <span className="text-sm">{success}</span>
-              <button onClick={() => setSuccess(null)} className="text-green-500 hover:text-green-700"><X className="w-5 h-5" /></button>
-            </div>
-          )}
-
-          {/* Summary Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 sm:p-5 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <ArrowUpCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-                </div>
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Pagos Recibidos</p>
-              <p className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">{formatCurrency(weekData?.totals.totalPayments || 0)}</p>
-            </div>
-            
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 sm:p-5 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <TrendingUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                </div>
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Ingresos</p>
-              <p className="text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(weekData?.totals.totalIncome || 0)}</p>
-            </div>
-            
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 sm:p-5 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <ArrowDownCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
-                </div>
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Total Gastos</p>
-              <p className="text-lg sm:text-xl font-bold text-red-600 dark:text-red-400">{formatCurrency(weekData?.totals.totalExpenses || 0)}</p>
-            </div>
-            
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 sm:p-5 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-10 h-10 bg-primary/10 dark:bg-primary/30 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <Wallet className="w-5 h-5 text-primary dark:text-primary-400" />
-                </div>
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Ganancia Neta</p>
-              <p className={`text-lg sm:text-xl font-bold ${(weekData?.totals.netProfit || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                {formatCurrency(weekData?.totals.netProfit || 0)}
-              </p>
-            </div>
-          </div>
-
-          {loading ? (
-            <div className="text-center py-12 text-gray-500 dark:text-gray-400">Cargando...</div>
-          ) : !weekData || weekData.summary.length === 0 ? (
-            <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
-              <Car className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-              <p className="text-gray-500 dark:text-gray-400">No hay vehículos registrados</p>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {/* Action Buttons Bar */}
-              <div className="flex flex-wrap items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700">
-                <span className="text-sm font-medium text-gray-600 dark:text-gray-400 mr-2">Acciones:</span>
-                <button
-                  onClick={() => vehiclesWithDriver[0] && openPaymentModal(vehiclesWithDriver[0].vehicle.id)}
-                  disabled={vehiclesWithDriver.length === 0}
-                  className="flex items-center gap-2 px-3 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-xl text-sm font-medium hover:bg-green-200 dark:hover:bg-green-900/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  <CreditCard className="w-4 h-4" />
-                  Registrar Pago
-                </button>
-                <button
-                  onClick={() => vehiclesWithDriver[0] && openExpenseModal(vehiclesWithDriver[0].vehicle.id)}
-                  disabled={vehiclesWithDriver.length === 0}
-                  className="flex items-center gap-2 px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm font-medium hover:bg-red-200 dark:hover:bg-red-900/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  <Receipt className="w-4 h-4" />
-                  Registrar Gasto
-                </button>
-              </div>
-
-              {vehiclesWithDriver.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                      <Car className="w-5 h-5 text-primary dark:text-primary-400" />
-                      Vehículos con Chofer ({vehiclesWithDriver.length})
-                    </h2>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {vehiclesWithDriver.map((item) => (
-                      <div key={item.vehicle.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 hover:shadow-lg transition-all">
-                        {/* Header */}
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-primary/10 dark:bg-primary/20 rounded-xl flex items-center justify-center">
-                              <Car className="w-6 h-6 text-primary dark:text-primary-400" />
-                            </div>
-                            <div>
-                              <h3 className="font-bold text-gray-900 dark:text-white text-base">{item.vehicle.plate}</h3>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">{item.vehicle.brand} {item.vehicle.model}</p>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Driver Info */}
-                        <div className="flex items-center gap-2 mb-3 px-2 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                          <div className="w-6 h-6 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center flex-shrink-0">
-                            <DollarSign className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                          </div>
-                          <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{item.driver?.name}</span>
-                        </div>
-                        
-                        {/* Financial Summary */}
-                        <div className="grid grid-cols-2 gap-2 mb-3">
-                          <div className="text-center p-2.5 bg-green-50 dark:bg-green-900/20 rounded-xl">
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Pago</p>
-                            <p className="font-bold text-green-600 dark:text-green-400 text-sm">{formatCurrency(item.totalPayments)}</p>
-                          </div>
-                          <div className="text-center p-2.5 bg-red-50 dark:bg-red-900/20 rounded-xl">
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Gastos</p>
-                            <p className="font-bold text-red-600 dark:text-red-400 text-sm">{formatCurrency(item.totalExpenses)}</p>
-                          </div>
-                        </div>
-                        
-                        {/* Payment Status */}
-                        <div className="flex items-center justify-between pt-3 mb-3 border-t border-gray-100 dark:border-gray-700">
-                          <div className="flex items-center gap-2">
-                            {item.paymentStatus ? (
-                              <button 
-                                onClick={() => item.paymentId && handleTogglePayment(item.paymentId, true)} 
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg text-xs font-medium hover:bg-green-200 dark:hover:bg-green-900/50 transition-all"
-                              >
-                                <CheckCircle className="w-3.5 h-3.5" /> Pagado
-                              </button>
-                            ) : item.paymentId ? (
-                              <button 
-                                onClick={() => item.paymentId && handleTogglePayment(item.paymentId, false)} 
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded-lg text-xs font-medium hover:bg-yellow-200 dark:hover:bg-yellow-900/50 transition-all"
-                              >
-                                <Circle className="w-3.5 h-3.5" /> Pendiente
-                              </button>
-                            ) : (
-                              <button 
-                                onClick={() => openPaymentModal(item.vehicle.id)} 
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-all"
-                              >
-                                <Plus className="w-3.5 h-3.5" /> Registrar
-                              </button>
-                            )}
-                          </div>
-                          <p className={`font-bold text-sm ${item.netProfit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                            {formatCurrency(item.netProfit)}
-                          </p>
-                        </div>
-                        
-                        {/* Action Buttons */}
-                        <div className="flex gap-2">
-                          <button 
-                            onClick={() => openPaymentModal(item.vehicle.id)} 
-                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-green-600 text-white rounded-xl text-xs font-medium hover:bg-green-700 transition-all"
-                          >
-                            <CreditCard className="w-3.5 h-3.5" />
-                            Pago
-                          </button>
-                          <button 
-                            onClick={() => openExpenseModal(item.vehicle.id)} 
-                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-red-600 text-white rounded-xl text-xs font-medium hover:bg-red-700 transition-all"
-                          >
-                            <Receipt className="w-3.5 h-3.5" />
-                            Gasto
-                          </button>
-                        </div>
-                        
-                        {/* Expenses List */}
-                        {item.expenses.length > 0 && (
-                          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Gastos registrados:</p>
-                            <div className="space-y-1.5 max-h-24 overflow-y-auto">
-                              {item.expenses.map((expense) => (
-                                <div key={expense.id} className="flex items-center justify-between text-xs bg-gray-50 dark:bg-gray-700/50 rounded-lg px-2 py-1.5">
-                                  <span className="text-gray-600 dark:text-gray-300 truncate flex-1 mr-2 capitalize">{expense.category}</span>
-                                  <div className="flex items-center gap-2 flex-shrink-0">
-                                    <span className="text-red-600 dark:text-red-400 font-medium">{formatCurrency(expense.amount)}</span>
-                                    <button 
-                                      onClick={() => handleDeleteExpense(expense.id)} 
-                                      className="text-gray-400 hover:text-red-500 transition-colors p-0.5"
-                                    >
-                                      <Trash2 className="w-3 h-3" />
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {vehiclesWithoutDriver.length > 0 && (
-                <div>
-                  <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                    <Car className="w-5 h-5 text-gray-400" />
-                    Vehículos sin Chofer ({vehiclesWithoutDriver.length})
-                  </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                    {vehiclesWithoutDriver.map((item) => (
-                      <div key={item.vehicle.id} className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-xl flex items-center justify-center">
-                            <Car className="w-5 h-5 text-gray-400" />
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-gray-700 dark:text-white">{item.vehicle.plate}</h3>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">{item.vehicle.brand} {item.vehicle.model}</p>
-                          </div>
-                        </div>
-                        <div className="mt-3 text-center py-2 bg-white dark:bg-gray-800 rounded-lg">
-                          <p className="text-xs text-gray-500 dark:text-gray-400">Sin chofer asignado</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          {/* Monthly View Controls */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={() => setReportMonth(m => m === 0 ? 11 : m - 1)} 
-                className="p-2.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl text-gray-600 dark:text-gray-300 transition-all"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <div className="flex items-center gap-2">
-                <select 
-                  value={reportMonth} 
-                  onChange={(e) => setReportMonth(parseInt(e.target.value))} 
-                  className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white font-medium rounded-lg outline-none border-none"
-                >
-                  {monthNames.map((m, i) => (<option key={i} value={i}>{m}</option>))}
-                </select>
-                <select 
-                  value={reportYear} 
-                  onChange={(e) => setReportYear(parseInt(e.target.value))} 
-                  className="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white font-medium rounded-lg outline-none border-none"
-                >
-                  {[reportYear - 1, reportYear, reportYear + 1].map(y => (<option key={y} value={y}>{y}</option>))}
-                </select>
-              </div>
-              <button 
-                onClick={() => setReportMonth(m => m === 11 ? 0 : m + 1)} 
-                className="p-2.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl text-gray-600 dark:text-gray-300 transition-all"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-              <span className="text-base font-semibold text-gray-700 dark:text-gray-300 ml-2">
-                {monthNames[reportMonth]} {reportYear}
-              </span>
-            </div>
-            
-            {/* Export Actions */}
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Exportar:</span>
-              <button
-                onClick={handleExportPDF}
-                disabled={exporting}
-                className="flex items-center gap-2 px-4 py-2.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm font-medium hover:bg-red-200 dark:hover:bg-red-900/50 disabled:opacity-50 transition-all shadow-sm"
-              >
-                <FileText className="w-4 h-4" />
-                PDF
-              </button>
-              <button
-                onClick={handleExportExcel}
-                disabled={exporting}
-                className="flex items-center gap-2 px-4 py-2.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-xl text-sm font-medium hover:bg-green-200 dark:hover:bg-green-900/50 disabled:opacity-50 transition-all shadow-sm"
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                Excel
-              </button>
-            </div>
-          </div>
-
-          {error && (
-            <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl flex items-center justify-between">
-              <span className="text-sm">{error}</span>
-              <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700"><X className="w-5 h-5" /></button>
-            </div>
-          )}
-
-          {success && (
-            <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-xl flex items-center justify-between">
-              <span className="text-sm">{success}</span>
-              <button onClick={() => setSuccess(null)} className="text-green-500 hover:text-green-700"><X className="w-5 h-5" /></button>
-            </div>
-          )}
-
-          {loading ? (
-            <div className="text-center py-12 text-gray-500 dark:text-gray-400">Cargando...</div>
-          ) : !reportData || reportData.vehicles.length === 0 ? (
-            <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
-              <Car className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-              <p className="text-gray-500 dark:text-gray-400">No hay datos para el período seleccionado</p>
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 dark:bg-gray-700">
-                    <tr>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Vehículo</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Chofer</th>
-                      <th className="text-right px-3 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pagos</th>
-                      <th className="text-right px-3 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ingresos</th>
-                      <th className="text-right px-3 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Ing.</th>
-                      <th className="text-right px-3 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Gastos</th>
-                      <th className="text-right px-3 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Neto</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {reportData.weeklyTotals && reportData.weeklyTotals.map((week: any) => (
-                      <tr key={`week-${week.weekNumber}`} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                        <td colSpan={2} className="px-4 py-3 font-semibold text-gray-900 dark:text-white bg-gray-50/50 dark:bg-gray-800/50 text-xs">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-primary" />
-                            Semana {week.weekNumber}
-                          </div>
-                        </td>
-                        <td className="px-3 py-3 text-right font-semibold text-green-600 dark:text-green-400 bg-gray-50/50 dark:bg-gray-800/50 text-xs">
-                          {formatCurrency(week.totalPayments)}
-                        </td>
-                        <td className="px-3 py-3 text-right font-semibold text-emerald-600 dark:text-emerald-400 bg-gray-50/50 dark:bg-gray-800/50 text-xs">
-                          {formatCurrency(week.totalIncome)}
-                        </td>
-                        <td className="px-3 py-3 text-right font-bold text-green-600 dark:text-green-400 bg-gray-50/50 dark:bg-gray-800/50 text-xs">
-                          {formatCurrency(week.totalRevenue)}
-                        </td>
-                        <td className="px-3 py-3 text-right font-semibold text-red-600 dark:text-red-400 bg-gray-50/50 dark:bg-gray-800/50 text-xs">
-                          {formatCurrency(week.totalExpenses)}
-                        </td>
-                        <td className={`px-3 py-3 text-right font-bold bg-gray-50/50 dark:bg-gray-800/50 text-xs ${week.netProfit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                          {formatCurrency(week.netProfit)}
-                        </td>
-                      </tr>
-                    ))}
-                    {reportData.vehicles.map((vehicle: any) => (
-                      <tr key={vehicle.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-primary/10 dark:bg-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                              <Car className="w-4 h-4 text-primary dark:text-primary-400" />
-                            </div>
-                            <span className="font-medium text-gray-900 dark:text-white">{vehicle.plate}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-gray-600 dark:text-gray-300 truncate max-w-[120px]">{vehicle.driver || '-'}</td>
-                        <td className="px-3 py-3 text-right font-semibold text-green-600 dark:text-green-400">{formatCurrency(vehicle.totalPayments)}</td>
-                        <td className="px-3 py-3 text-right font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(vehicle.totalIncome)}</td>
-                        <td className="px-3 py-3 text-right font-bold text-green-600 dark:text-green-400">{formatCurrency(vehicle.totalRevenue)}</td>
-                        <td className="px-3 py-3 text-right font-semibold text-red-600 dark:text-red-400">{formatCurrency(vehicle.totalExpenses)}</td>
-                        <td className={`px-3 py-3 text-right font-bold ${vehicle.netProfit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{formatCurrency(vehicle.netProfit)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="bg-gray-100 dark:bg-gray-700 font-bold">
-                    <tr>
-                      <td colSpan={2} className="px-4 py-3 text-gray-900 dark:text-white text-xs uppercase tracking-wider">TOTALES</td>
-                      <td className="px-3 py-3 text-right text-green-600 dark:text-green-400">{formatCurrency(reportData.grandTotals.totalPayments)}</td>
-                      <td className="px-3 py-3 text-right text-emerald-600 dark:text-emerald-400">{formatCurrency(reportData.grandTotals.totalIncome)}</td>
-                      <td className="px-3 py-3 text-right text-green-600 dark:text-green-400">{formatCurrency(reportData.grandTotals.totalRevenue)}</td>
-                      <td className="px-3 py-3 text-right text-red-600 dark:text-red-400">{formatCurrency(reportData.grandTotals.totalExpenses)}</td>
-                      <td className={`px-3 py-3 text-right ${reportData.grandTotals.netProfit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{formatCurrency(reportData.grandTotals.netProfit)}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          )}
-        </>
+          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700"><X className="w-5 h-5" /></button>
+        </div>
       )}
 
-      {showPaymentModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md shadow-xl">
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center">
-                  <CreditCard className="w-5 h-5 text-green-600 dark:text-green-400" />
-                </div>
-                <h3 className="font-heading text-lg font-bold dark:text-white">Registrar Pago Semanal</h3>
+      {success && (
+        <div className="p-4 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-xl flex items-center justify-between">
+          <span className="text-sm">{success}</span>
+          <button onClick={() => setSuccess(null)} className="text-green-500 hover:text-green-700"><X className="w-5 h-5" /></button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Total recaudado esta semana</p>
+              <p className="text-xl font-bold text-gray-900 dark:text-white">{formatCurrency(resumen?.totalRecaudadoSemana || 0)}</p>
+            </div>
+            <div className="w-10 h-10 bg-primary/10 dark:bg-primary/30 rounded-xl flex items-center justify-center">
+              <Calendar className="w-5 h-5 text-primary" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Total recaudado este mes</p>
+              <p className="text-xl font-bold text-gray-900 dark:text-white">{formatCurrency(resumen?.totalRecaudadoMes || 0)}</p>
+            </div>
+            <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Pagos pendientes</p>
+              <p className="text-xl font-bold text-gray-900 dark:text-white">{resumen?.pagosPendientes || 0}</p>
+            </div>
+            <div className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900/30 rounded-xl flex items-center justify-center">
+              <AlertCircle className="w-5 h-5 text-yellow-700 dark:text-yellow-400" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Conductores pagados</p>
+              <p className="text-xl font-bold text-gray-900 dark:text-white">{resumen?.conductoresPagados || 0}</p>
+            </div>
+            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+              <Users className="w-5 h-5 text-blue-700 dark:text-blue-400" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha seleccionada</label>
+            <input
+              type="date"
+              value={fechaSeleccionada}
+              onChange={(e) => setFechaSeleccionada(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl outline-none bg-white dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Semana</label>
+            <div className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-200">
+              <div className="text-sm text-gray-500 dark:text-gray-400">Semana:</div>
+              <div>
+                {(() => {
+                  const start = parseDateInputValue(semanaInicio)
+                  const end = parseDateInputValue(semanaFin)
+                  if (!start || !end) return '—'
+                  return formatWeekLabel(start, end)
+                })()}
               </div>
-              <button onClick={() => setShowPaymentModal(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl text-gray-500 transition-colors">
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Conductor</label>
+            <select
+              value={filtroConductorId}
+              onChange={(e) => setFiltroConductorId(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl outline-none bg-white dark:bg-gray-700 dark:text-white"
+            >
+              <option value="">Todos</option>
+              {drivers.map((d) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vehículo</label>
+            <select
+              value={filtroVehiculoId}
+              onChange={(e) => setFiltroVehiculoId(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-xl outline-none bg-white dark:bg-gray-700 dark:text-white"
+            >
+              <option value="">Todos</option>
+              {vehicles.map((v) => (
+                <option key={v.id} value={v.id}>{v.plate} - {v.brand} {v.model}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-100 dark:border-gray-600">
+              <tr>
+                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">Conductor</th>
+                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">Vehículo</th>
+                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">Semana</th>
+                <th className="text-right px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">Monto</th>
+                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">Tipo</th>
+                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">Estado semanal</th>
+                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">Fecha pago</th>
+                <th className="text-right px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+              {loading ? (
+                <tr><td colSpan={8} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">Cargando...</td></tr>
+              ) : pagos.length === 0 ? (
+                <tr><td colSpan={8} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">No hay pagos registrados</td></tr>
+              ) : (
+                pagos.map((p) => (
+                  <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="px-6 py-4 text-gray-900 dark:text-white font-medium">{p.conductor?.name}</td>
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{p.vehiculo?.plate} - {p.vehiculo?.brand} {p.vehiculo?.model}</td>
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{formatDate(p.semanaInicio)} - {formatDate(p.semanaFin)}</td>
+                    <td className="px-6 py-4 text-right font-semibold text-gray-900 dark:text-white">{formatCurrency(Number(p.monto) || 0)}</td>
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{(p.tipoPago || 'abono') === 'completo' ? 'Pago completo' : 'Abono'}</td>
+                    <td className="px-6 py-4">
+                      {(() => {
+                        const key = `${p.conductorId}::${p.vehiculoId}`
+                        const info = estadoPorGrupo.get(key)
+                        const estado = info?.estado || 'Pendiente'
+                        const cls = estado === 'Pagado'
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                          : estado === 'Parcial'
+                            ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                            : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+                        return (
+                          <div className="flex flex-col gap-1">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium inline-flex w-fit ${cls}`}>{estado}</span>
+                            {info && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {formatCurrency(info.total)} / {formatCurrency(info.cuota || 0)}
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })()}
+                    </td>
+                    <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{formatDate((p.fechaPago as any) || p.createdAt)}</td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEdit(p)}
+                          className="p-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                          aria-label="Editar"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(p.id)}
+                          className="p-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          aria-label="Eliminar"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-end text-sm text-gray-600 dark:text-gray-300">
+          <span className="font-medium">Total en tabla:</span>
+          <span className="ml-2 font-semibold">{formatCurrency(totalTabla)}</span>
+        </div>
+      </div>
+
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-heading text-xl font-bold dark:text-white">Registrar Pago</h3>
+              <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handlePaymentSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Vehículo</label>
-                <input 
-                  type="text" 
-                  value={vehicles.find(v => v.id === selectedVehicle)?.plate || ''} 
-                  disabled 
-                  className="w-full px-4 py-2.5 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-gray-300" 
-                />
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Conductor</label>
+                  <select name="conductorId" required className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white outline-none">
+                    <option value="">Seleccionar...</option>
+                    {drivers.map((d) => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vehículo</label>
+                  <select name="vehiculoId" required className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white outline-none">
+                    <option value="">Seleccionar...</option>
+                    {vehicles.map((v) => (
+                      <option key={v.id} value={v.id}>{v.plate} - {v.brand} {v.model}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Chofer</label>
-                <select 
-                  name="driverId" 
-                  required 
-                  className="w-full px-4 py-2.5 text-sm border border-gray-200 dark:border-gray-600 rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                >
-                  <option value="">Seleccionar...</option>
-                  {drivers.filter(d => d.vehicleId === selectedVehicle).map(d => (<option key={d.id} value={d.id}>{d.name}</option>))}
-                </select>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha seleccionada</label>
+                  <input
+                    name="fechaSeleccionada"
+                    type="date"
+                    required
+                    defaultValue={fechaSeleccionada}
+                    onChange={(e) => setFechaSeleccionada(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Semana</label>
+                  <div className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-200">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">Semana:</div>
+                    <div>
+                      {(() => {
+                        const start = parseDateInputValue(semanaInicio)
+                        const end = parseDateInputValue(semanaFin)
+                        if (!start || !end) return '—'
+                        return formatWeekLabel(start, end)
+                      })()}
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Monto</label>
-                <input 
-                  type="number" 
-                  name="amount" 
-                  required 
-                  className="w-full px-4 py-2.5 text-sm border border-gray-200 dark:border-gray-600 rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none" 
-                  placeholder="150000" 
-                />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Monto pagado</label>
+                  <input name="monto" type="number" min={0} step="1" required className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white outline-none" placeholder="120000" />
+                </div>
+                <div className="flex items-end">
+                  <div className="w-full">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de pago</label>
+                    <select name="tipoPago" defaultValue="abono" className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white outline-none">
+                      <option value="abono">Abono (pago parcial)</option>
+                      <option value="completo">Pago completo</option>
+                    </select>
+                  </div>
+                </div>
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Fecha de Pago</label>
-                <input 
-                  type="date" 
-                  name="paymentDate" 
-                  defaultValue={new Date().toISOString().split('T')[0]}
-                  required 
-                  className="w-full px-4 py-2.5 text-sm border border-gray-200 dark:border-gray-600 rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none" 
-                />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Observaciones (opcional)</label>
+                <textarea name="observaciones" rows={3} className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white outline-none" placeholder="Detalles del pago..." />
               </div>
+
               <div className="flex gap-3 pt-2">
-                <button 
-                  type="button" 
-                  onClick={() => setShowPaymentModal(false)} 
-                  className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit" 
-                  className="flex-1 px-4 py-2.5 text-sm font-medium bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors"
-                >
-                  Guardar Pago
-                </button>
+                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl">Cancelar</button>
+                <button type="submit" className="flex-1 px-6 py-2 bg-primary text-white rounded-xl font-medium hover:bg-primary-800">Guardar</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {showExpenseModal && (
+      {showEditModal && editingPago && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md shadow-xl">
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center">
-                  <Receipt className="w-5 h-5 text-red-600 dark:text-red-400" />
-                </div>
-                <h3 className="font-heading text-lg font-bold dark:text-white">Registrar Gasto</h3>
-              </div>
-              <button onClick={() => setShowExpenseModal(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl text-gray-500 transition-colors">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-heading text-xl font-bold dark:text-white">Editar Pago</h3>
+              <button onClick={() => { setShowEditModal(false); setEditingPago(null) }} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleExpenseSubmit} className="space-y-4">
+
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha de pago</label>
+                  <input
+                    name="fechaPago"
+                    type="date"
+                    required
+                    defaultValue={toISODateInputValue(new Date((editingPago.fechaPago as any) || editingPago.createdAt))}
+                    className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de pago</label>
+                  <select
+                    name="tipoPago"
+                    defaultValue={(editingPago.tipoPago as any) || 'abono'}
+                    className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white outline-none"
+                  >
+                    <option value="abono">Abono (pago parcial)</option>
+                    <option value="completo">Pago completo</option>
+                  </select>
+                </div>
+              </div>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Vehículo</label>
-                <input 
-                  type="text" 
-                  value={vehicles.find(v => v.id === selectedVehicle)?.plate || ''} 
-                  disabled 
-                  className="w-full px-4 py-2.5 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 dark:text-gray-300" 
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Monto</label>
+                <input
+                  name="monto"
+                  type="number"
+                  min={0}
+                  step="1"
+                  required
+                  defaultValue={String(Number(editingPago.monto) || 0)}
+                  className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white outline-none"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Categoría</label>
-                <select 
-                  name="category" 
-                  required 
-                  className="w-full px-4 py-2.5 text-sm border border-gray-200 dark:border-gray-600 rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none capitalize"
-                >
-                  {EXPENSE_CATEGORIES.map(cat => (<option key={cat.value} value={cat.value} className="capitalize">{cat.label}</option>))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Descripción</label>
-                <input 
-                  type="text" 
-                  name="description" 
-                  required 
-                  className="w-full px-4 py-2.5 text-sm border border-gray-200 dark:border-gray-600 rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none" 
-                  placeholder="Descripción del gasto" 
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Monto</label>
-                <input 
-                  type="number" 
-                  name="amount" 
-                  required 
-                  className="w-full px-4 py-2.5 text-sm border border-gray-200 dark:border-gray-600 rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none" 
-                  placeholder="50000" 
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Fecha del Gasto</label>
-                <input 
-                  type="date" 
-                  name="expense_date" 
-                  defaultValue={new Date().toISOString().split('T')[0]}
-                  required 
-                  className="w-full px-4 py-2.5 text-sm border border-gray-200 dark:border-gray-600 rounded-xl dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none" 
-                />
-              </div>
+
               <div className="flex gap-3 pt-2">
-                <button 
-                  type="button" 
-                  onClick={() => setShowExpenseModal(false)} 
-                  className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit" 
-                  className="flex-1 px-4 py-2.5 text-sm font-medium bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors"
-                >
-                  Guardar Gasto
-                </button>
+                <button type="button" onClick={() => { setShowEditModal(false); setEditingPago(null) }} className="flex-1 px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl">Cancelar</button>
+                <button type="submit" className="flex-1 px-6 py-2 bg-primary text-white rounded-xl font-medium hover:bg-primary-800">Guardar cambios</button>
               </div>
             </form>
           </div>

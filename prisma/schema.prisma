@@ -38,6 +38,7 @@ model Vehicle {
   expenses    Expense[]
   incomes     Income[]
   weeklyPayments WeeklyPayment[]
+  pagosSemanales PagoSemanal[]
 }
 
 model Driver {
@@ -52,6 +53,29 @@ model Driver {
   vehicleId   String?  @unique
   rentals     Rental[]
   weeklyPayments WeeklyPayment[]
+  pagosSemanales PagoSemanal[]
+}
+
+model PagoSemanal {
+  id             String   @id @default(cuid())
+  conductor      Driver   @relation(fields: [conductorId], references: [id])
+  conductorId    String   @map("conductor_id")
+  vehiculo       Vehicle  @relation(fields: [vehiculoId], references: [id])
+  vehiculoId     String   @map("vehiculo_id")
+  fechaPago      DateTime @default(now()) @map("fecha_pago")
+  tipoPago       String   @default("abono") @map("tipo_pago")
+  semanaInicio   DateTime @map("semana_inicio")
+  semanaFin      DateTime @map("semana_fin")
+  monto          Float    @map("monto")
+  estado         String   @map("estado")
+  observaciones  String?  @map("observaciones")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([conductorId])
+  @@index([vehiculoId])
+  @@index([fechaPago])
+  @@index([semanaInicio, semanaFin])
+  @@map("pagos_semanales")
 }
 
 model Rental {

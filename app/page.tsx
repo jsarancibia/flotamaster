@@ -108,7 +108,7 @@ export default function Home() {
               
               <motion.h1 
                 variants={fadeInUp}
-                className="font-heading text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6"
+                className="font-heading text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6"
               >
                 Control y seguimiento de{' '}
                 <span className="text-primary bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
@@ -141,17 +141,17 @@ export default function Home() {
                 </a>
               </motion.div>
 
-              <motion.div variants={fadeInUp} className="flex items-center gap-8 mt-12 pt-8 border-t border-gray-200">
+              <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row sm:items-center gap-6 sm:gap-8 mt-12 pt-8 border-t border-gray-200">
                 <div>
                   <p className="font-heading text-3xl font-bold text-primary">Panel</p>
                   <p className="text-gray-500">Resumen operativo</p>
                 </div>
-                <div className="w-px h-12 bg-gray-200" />
+                <div className="hidden sm:block w-px h-12 bg-gray-200" />
                 <div>
                   <p className="font-heading text-3xl font-bold text-primary">Gestión</p>
                   <p className="text-gray-500">Vehículos y conductores</p>
                 </div>
-                <div className="w-px h-12 bg-gray-200" />
+                <div className="hidden sm:block w-px h-12 bg-gray-200" />
                 <div>
                   <p className="font-heading text-3xl font-bold text-primary">Control</p>
                   <p className="text-gray-500">Mantenimientos y estado</p>

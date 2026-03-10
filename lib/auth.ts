@@ -16,7 +16,7 @@ export async function createSession(userId: string) {
   const cookieStore = await cookies()
   cookieStore.set(AUTH_COOKIE, userId, {
     httpOnly: true,
-    secure: false,
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
     maxAge: 60 * 60 * 24 * 7
@@ -24,21 +24,26 @@ export async function createSession(userId: string) {
 }
 
 export async function getSession() {
-  const cookieStore = await cookies()
-  const userId = cookieStore.get(AUTH_COOKIE)?.value
-  
-  if (!userId) return null
-  
-  const user = await prisma.user.findUnique({
-    where: { id: userId }
-  })
-  
-  return user
+  try {
+    const cookieStore = await cookies()
+    const userId = cookieStore.get(AUTH_COOKIE)?.value
+
+    if (!userId) return null
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    })
+
+    return user
+  } catch (error) {
+    console.error('getSession error:', error)
+    return null
+  }
 }
 
 export async function destroySession() {
   const cookieStore = await cookies()
-  cookieStore.delete(AUTH_COOKIE)
+  cookieStore.delete({ name: AUTH_COOKIE, path: '/' })
 }
 
 export async function requireAuth() {

@@ -184,19 +184,30 @@ export default function VehiclesPage() {
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="font-heading text-3xl font-bold text-gray-900 dark:text-white">Vehículos</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">Administra tu flota de taxis y colectivos</p>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Gestión completa de vehículos</p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-medium hover:bg-primary-800 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Agregar Vehículo
-        </button>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative">
+            <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar por placa..."
+              className="w-full pl-12 py-2 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none overflow-visible bg-white dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-medium hover:bg-primary-800 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Agregar Vehículo
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -272,7 +283,7 @@ export default function VehiclesPage() {
       {/* Add/Edit Vehicle Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-md">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h3 className="font-heading text-xl font-bold mb-4 dark:text-white">
               {editingVehicle ? 'Editar Vehículo' : 'Agregar Vehículo'}
             </h3>

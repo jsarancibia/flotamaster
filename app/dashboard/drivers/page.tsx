@@ -171,19 +171,22 @@ export default function DriversPage() {
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="font-heading text-3xl font-bold text-gray-900 dark:text-white">Choferes</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">Administra los choferes de tu flota</p>
+          <h1 className="font-heading text-3xl font-bold text-gray-900 dark:text-white">Conductores</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Gestión de conductores y licencias</p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-medium hover:bg-primary-800 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Agregar Chofer
-        </button>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-medium hover:bg-primary-800 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Agregar Conductor
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -276,7 +279,7 @@ export default function DriversPage() {
       {/* Add/Edit Driver Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-md">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h3 className="font-heading text-xl font-bold mb-4 dark:text-white">
               {editingDriver ? 'Editar Chofer' : 'Agregar Chofer'}
             </h3>
