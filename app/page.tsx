@@ -16,6 +16,7 @@ import {
   MapPin,
   Star
 } from 'lucide-react'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 const fadeInUp = {
   initial: { opacity: 0, y: 30 },
@@ -63,6 +64,7 @@ export default function Home() {
             <a href="#modulos" className="text-gray-600 dark:text-gray-200 hover:text-primary dark:hover:text-primary-300 transition-colors font-medium cursor-pointer">Módulos</a>
             <a href="#operacion" className="text-gray-600 dark:text-gray-200 hover:text-primary dark:hover:text-primary-300 transition-colors font-medium cursor-pointer">Operación</a>
             <a href="#soporte" className="text-gray-600 dark:text-gray-200 hover:text-primary dark:hover:text-primary-300 transition-colors font-medium cursor-pointer">Soporte</a>
+            <ThemeToggle variant="icon" />
             <Link 
               href="/login"
               className="bg-primary text-white px-6 py-2.5 rounded-xl font-medium hover:bg-primary-800 transition-all hover:shadow-lg hover:shadow-primary/30 cursor-pointer"
