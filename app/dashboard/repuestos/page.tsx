@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Package, Plus, X, Pencil, Trash2 } from 'lucide-react'
+import { Package, Pencil, Plus, Trash2, X } from 'lucide-react'
+import ConfirmModal from '@/components/ConfirmModal'
+import { formatCurrencyCLP, formatDateDDMMYYYY } from '@/lib/format'
 
 type Vehicle = {
   id: string
@@ -23,25 +25,11 @@ type Repuesto = {
   vehiculoId: string | null
 }
 
-const money = new Intl.NumberFormat('es-AR', {
-  style: 'currency',
-  currency: 'ARS',
-  maximumFractionDigits: 0,
-})
-
 function toISODateInputValue(date: Date) {
   const yyyy = String(date.getUTCFullYear())
   const mm = String(date.getUTCMonth() + 1).padStart(2, '0')
   const dd = String(date.getUTCDate()).padStart(2, '0')
   return `${yyyy}-${mm}-${dd}`
-}
-
-function fmtDate(dateIso: string) {
-  const d = new Date(dateIso)
-  const dd = String(d.getUTCDate()).padStart(2, '0')
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
-  const yyyy = String(d.getUTCFullYear())
-  return `${dd}-${mm}-${yyyy}`
 }
 
 function dateInputToUtcNoonIso(value: string) {
@@ -67,6 +55,8 @@ export default function RepuestosPage() {
   const [success, setSuccess] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const fetchVehicles = useCallback(async () => {
     try {
@@ -199,17 +189,23 @@ export default function RepuestosPage() {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('¿Eliminar repuesto? Esta acción no se puede deshacer.')) return
+  const requestDelete = (id: string) => {
+    setConfirmDeleteId(id)
+    setConfirmDeleteOpen(true)
+  }
 
-    setDeletingId(id)
+  const handleDelete = async () => {
+    if (!confirmDeleteId) return
+
+    setDeletingId(confirmDeleteId)
     setError(null)
-    setSuccess(null)
 
     try {
-      const res = await fetch(`/api/repuestos?id=${encodeURIComponent(id)}`, {
+      const res = await fetch('/api/repuestos', {
         method: 'DELETE',
         credentials: 'include',
+        body: JSON.stringify({ id: confirmDeleteId }),
+        headers: { 'Content-Type': 'application/json' },
       })
 
       const json = await res.json().catch(() => ({}))
@@ -231,6 +227,8 @@ export default function RepuestosPage() {
       setError('Error de conexión')
     } finally {
       setDeletingId(null)
+      setConfirmDeleteOpen(false)
+      setConfirmDeleteId(null)
     }
   }
 
@@ -260,7 +258,7 @@ export default function RepuestosPage() {
       {error && (
         <div className="p-4 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl flex items-center justify-between">
           <span className="text-sm">{error}</span>
-          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">
+          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700" aria-label="Cerrar mensaje de error">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -269,7 +267,7 @@ export default function RepuestosPage() {
       {success && (
         <div className="p-4 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-xl flex items-center justify-between">
           <span className="text-sm">{success}</span>
-          <button onClick={() => setSuccess(null)} className="text-green-500 hover:text-green-700">
+          <button onClick={() => setSuccess(null)} className="text-green-500 hover:text-green-700" aria-label="Cerrar mensaje de éxito">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -282,7 +280,7 @@ export default function RepuestosPage() {
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 md:col-span-2">
           <p className="text-xs text-gray-500 dark:text-gray-400">Gasto total (lista)</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">{loading ? '—' : money.format(totalGasto)}</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">{loading ? '—' : formatCurrencyCLP(totalGasto)}</p>
         </div>
       </div>
 
@@ -320,10 +318,10 @@ export default function RepuestosPage() {
                       <td className="px-6 py-4 text-gray-600 dark:text-gray-300 whitespace-nowrap">{r.nombre}</td>
                       <td className="px-6 py-4 text-gray-600 dark:text-gray-300 min-w-[240px]">{r.descripcion || '—'}</td>
                       <td className="px-6 py-4 text-right text-gray-900 dark:text-white">{r.cantidad}</td>
-                      <td className="px-6 py-4 text-right text-gray-900 dark:text-white">{money.format(Number(r.precioUnitario) || 0)}</td>
-                      <td className="px-6 py-4 text-right font-semibold text-gray-900 dark:text-white">{money.format(costoTotal)}</td>
+                      <td className="px-6 py-4 text-right text-gray-900 dark:text-white">{formatCurrencyCLP(Number(r.precioUnitario) || 0)}</td>
+                      <td className="px-6 py-4 text-right font-semibold text-gray-900 dark:text-white">{formatCurrencyCLP(costoTotal)}</td>
                       <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{r.proveedor || '—'}</td>
-                      <td className="px-6 py-4 text-gray-500 dark:text-gray-400 whitespace-nowrap">{fmtDate(r.fechaCompra)}</td>
+                      <td className="px-6 py-4 text-gray-500 dark:text-gray-400 whitespace-nowrap">{formatDateDDMMYYYY(r.fechaCompra)}</td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-2">
                           <button
@@ -336,10 +334,10 @@ export default function RepuestosPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleDelete(r.id)}
+                            onClick={() => requestDelete(r.id)}
                             disabled={deletingId === r.id}
                             className="p-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
-                            aria-label="Eliminar"
+                            aria-label="Eliminar repuesto"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -354,12 +352,24 @@ export default function RepuestosPage() {
         </div>
       </div>
 
+      <ConfirmModal
+        open={confirmDeleteOpen}
+        title="Eliminar repuesto"
+        message="¿Estás seguro de eliminar este repuesto? Esta acción no se puede deshacer."
+        confirming={!!deletingId}
+        onCancel={() => {
+          setConfirmDeleteOpen(false)
+          setConfirmDeleteId(null)
+        }}
+        onConfirm={handleDelete}
+      />
+
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-heading text-xl font-bold dark:text-white">{editing ? 'Editar repuesto' : 'Registrar repuesto'}</h3>
-              <button onClick={closeModal} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+              <button onClick={closeModal} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" aria-label="Cerrar">
                 <X className="w-5 h-5" />
               </button>
             </div>

@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Car, Plus, Trash2, Search } from 'lucide-react'
+import ConfirmModal from '@/components/ConfirmModal'
+import { formatCurrencyCLP } from '@/lib/format'
 
 interface Vehicle {
   id: string
@@ -33,6 +35,9 @@ export default function VehiclesPage() {
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [searchPlate, setSearchPlate] = useState('')
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -78,13 +83,7 @@ export default function VehiclesPage() {
     }
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0
-    }).format(amount)
-  }
+  const formatCurrency = (amount: number) => formatCurrencyCLP(amount)
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
@@ -165,21 +164,35 @@ export default function VehiclesPage() {
     setError(null)
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('¿Eliminar vehículo?')) return
-    
+  const filteredVehicles = useMemo(() => {
+    const q = searchPlate.trim().toLowerCase()
+    if (!q) return vehicles
+    return vehicles.filter((v) => String(v.plate || '').toLowerCase().includes(q))
+  }, [vehicles, searchPlate])
+
+  const requestDelete = (id: string) => {
+    setConfirmDeleteId(id)
+    setConfirmDeleteOpen(true)
+  }
+
+  const handleDelete = async () => {
+    if (!confirmDeleteId) return
+
     try {
       const formData = new FormData()
       formData.append('_action', 'delete')
-      
-      await fetch(`/api/vehicles/${id}`, {
+
+      await fetch(`/api/vehicles/${confirmDeleteId}`, {
         method: 'POST',
         credentials: 'include',
-        body: formData
+        body: formData,
       })
       fetchVehicles()
     } catch (error) {
       console.error('Error deleting vehicle:', error)
+    } finally {
+      setConfirmDeleteOpen(false)
+      setConfirmDeleteId(null)
     }
   }
 
@@ -197,6 +210,8 @@ export default function VehiclesPage() {
             <input
               type="text"
               placeholder="Buscar por placa..."
+              value={searchPlate}
+              onChange={(e) => setSearchPlate(e.target.value)}
               className="w-full pl-12 py-2 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none overflow-visible bg-white dark:bg-gray-700 dark:text-white"
             />
           </div>
@@ -214,7 +229,7 @@ export default function VehiclesPage() {
         <div className="text-center py-12 text-gray-500 dark:text-gray-400">Cargando...</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {vehicles.map((vehicle) => (
+          {filteredVehicles.map((vehicle) => (
             <div
               key={vehicle.id}
               onClick={() => openEditModal(vehicle)}
@@ -261,8 +276,12 @@ export default function VehiclesPage() {
                     </span>
                   </div>
                   <button
-                    onClick={(e) => { e.stopPropagation(); handleDelete(vehicle.id) }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      requestDelete(vehicle.id)
+                    }}
                     className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                    aria-label="Eliminar vehículo"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -429,6 +448,17 @@ export default function VehiclesPage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmDeleteOpen}
+        title="Eliminar vehículo"
+        message="¿Estás seguro de eliminar este vehículo?"
+        onCancel={() => {
+          setConfirmDeleteOpen(false)
+          setConfirmDeleteId(null)
+        }}
+        onConfirm={handleDelete}
+      />
     </div>
   )
 }

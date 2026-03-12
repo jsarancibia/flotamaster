@@ -2,29 +2,13 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
 
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0
-  }).format(amount)
-}
+import { formatCurrencyCLP, formatDateDDMMYYYY } from '@/lib/format'
 
-const formatDate = (date: string | Date) => {
-  return new Date(date).toLocaleDateString('es-CO', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  })
-}
+const formatCurrency = (amount: number) => formatCurrencyCLP(amount)
 
-const formatDateDMY = (date: string | Date) => {
-  const d = new Date(date)
-  const dd = String(d.getDate()).padStart(2, '0')
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const yyyy = String(d.getFullYear())
-  return `${dd}-${mm}-${yyyy}`
-}
+const formatDate = (date: string | Date) => formatDateDDMMYYYY(date)
+
+const formatDateDMY = (date: string | Date) => formatDateDDMMYYYY(date)
 
 export function exportFinanceReportPDF(data: any) {
   const doc = new jsPDF()

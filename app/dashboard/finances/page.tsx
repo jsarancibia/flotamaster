@@ -3,17 +3,18 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
-  TrendingUp,
-  Users,
-  Car,
-  Calendar,
-  Plus,
-  X,
-  Download,
-  AlertCircle,
-  Pencil,
-  Trash2
+  Download, 
+  Plus, 
+  Pencil, 
+  Trash2, 
+  X, 
+  AlertCircle, 
+  Users, 
+  Calendar, 
+  TrendingUp 
 } from 'lucide-react'
+import ConfirmModal from '@/components/ConfirmModal'
+import { formatCurrencyCLP, formatDateDDMMYYYY } from '@/lib/format'
 import { exportReporteFinancieroSemanalExcel, exportReporteFinancieroSemanalPDF } from '@/lib/exportUtils'
 
 interface Vehicle {
@@ -54,15 +55,11 @@ interface ResumenFinanzas {
 }
 
 function formatDate(date: string | Date) {
-  return new Date(date).toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return formatDateDDMMYYYY(date)
 }
 
 function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0
-  }).format(amount)
+  return formatCurrencyCLP(amount)
 }
 
 function toISODateInputValue(date: Date) {
@@ -127,6 +124,9 @@ export default function FinancesPage() {
   const [exporting, setExporting] = useState(false)
   const router = useRouter()
 
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
   const fetchBaseData = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -157,13 +157,17 @@ export default function FinancesPage() {
     }
   }, [router])
 
-  const handleDelete = async (id: string) => {
-    const ok = window.confirm('¿Seguro que deseas eliminar este pago? Esta acción no se puede deshacer.')
-    if (!ok) return
+  const requestDelete = (id: string) => {
+    setConfirmDeleteId(id)
+    setConfirmDeleteOpen(true)
+  }
+
+  const handleDelete = async () => {
+    if (!confirmDeleteId) return
     setError(null)
     setSuccess(null)
     try {
-      const res = await fetch(`/api/finances/payments?id=${encodeURIComponent(id)}`, {
+      const res = await fetch(`/api/finances/payments?id=${encodeURIComponent(confirmDeleteId)}`, {
         method: 'DELETE',
         credentials: 'include'
       })
@@ -182,6 +186,9 @@ export default function FinancesPage() {
     } catch (e) {
       console.error('Error deleting payment:', e)
       setError('Error de conexión')
+    } finally {
+      setConfirmDeleteOpen(false)
+      setConfirmDeleteId(null)
     }
   }
 
@@ -481,14 +488,14 @@ export default function FinancesPage() {
             <AlertCircle className="w-5 h-5" />
             <span className="text-sm">{error}</span>
           </div>
-          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700"><X className="w-5 h-5" /></button>
+          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700" aria-label="Cerrar mensaje de error"><X className="w-5 h-5" /></button>
         </div>
       )}
 
       {success && (
         <div className="p-4 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-xl flex items-center justify-between">
           <span className="text-sm">{success}</span>
-          <button onClick={() => setSuccess(null)} className="text-green-500 hover:text-green-700"><X className="w-5 h-5" /></button>
+          <button onClick={() => setSuccess(null)} className="text-green-500 hover:text-green-700" aria-label="Cerrar mensaje de éxito"><X className="w-5 h-5" /></button>
         </div>
       )}
 
@@ -659,9 +666,9 @@ export default function FinancesPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDelete(p.id)}
+                          onClick={() => requestDelete(p.id)}
                           className="p-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                          aria-label="Eliminar"
+                          aria-label="Eliminar pago"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -684,7 +691,7 @@ export default function FinancesPage() {
           <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-heading text-xl font-bold dark:text-white">Registrar Pago</h3>
-              <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+              <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" aria-label="Cerrar">
                 <X className="w-5 h-5" />
               </button>
             </div>

@@ -17,6 +17,8 @@ import {
   YAxis,
 } from 'recharts'
 
+import { formatCurrencyCLP, formatDateDDMMYYYY } from '@/lib/format'
+
 type Vehicle = {
   id: string
   plate: string
@@ -41,19 +43,7 @@ type ControlFinancieroResponse = {
   }>
 }
 
-const money = new Intl.NumberFormat('es-AR', {
-  style: 'currency',
-  currency: 'ARS',
-  maximumFractionDigits: 0,
-})
 
-function fmtDate(dateIso: string) {
-  const d = new Date(dateIso)
-  const dd = String(d.getDate()).padStart(2, '0')
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const yyyy = String(d.getFullYear())
-  return `${dd}-${mm}-${yyyy}`
-}
 
 function currentMonth1to12() {
   return new Date().getMonth() + 1
@@ -206,19 +196,19 @@ export default function ControlFinancieroPage() {
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm">
           <p className="text-gray-500 dark:text-gray-400 text-xs mb-1">Ingresos del período</p>
           <p className="font-heading text-2xl font-bold text-gray-900 dark:text-white">
-            {loading || !data ? '—' : money.format(data.resumen.ingresosPeriodo)}
+            {loading || !data ? '—' : formatCurrencyCLP(data.resumen.ingresosPeriodo)}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm">
           <p className="text-gray-500 dark:text-gray-400 text-xs mb-1">Gastos del período</p>
           <p className="font-heading text-2xl font-bold text-gray-900 dark:text-white">
-            {loading || !data ? '—' : money.format(data.resumen.gastosPeriodo)}
+            {loading || !data ? '—' : formatCurrencyCLP(data.resumen.gastosPeriodo)}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm">
           <p className="text-gray-500 dark:text-gray-400 text-xs mb-1">Ganancia neta</p>
           <p className="font-heading text-2xl font-bold text-gray-900 dark:text-white">
-            {loading || !data ? '—' : money.format(data.resumen.gananciaNeta)}
+            {loading || !data ? '—' : formatCurrencyCLP(data.resumen.gananciaNeta)}
           </p>
         </div>
       </div>
@@ -237,7 +227,7 @@ export default function ControlFinancieroPage() {
                 <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
                 <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} width={70} />
-                <Tooltip formatter={(v) => money.format(Number(v) || 0)} />
+                <Tooltip formatter={(v) => formatCurrencyCLP(Number(v) || 0)} />
                 <Bar dataKey="ingresos" fill="#0D47A1" radius={[8, 8, 0, 0]} barSize={20} />
               </BarChart>
             </ResponsiveContainer>
@@ -249,7 +239,7 @@ export default function ControlFinancieroPage() {
           <div className="h-[260px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Tooltip formatter={(v) => money.format(Number(v) || 0)} />
+                <Tooltip formatter={(v) => formatCurrencyCLP(Number(v) || 0)} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Pie
                   data={data?.graficos.gastosPorVehiculo || []}
@@ -276,7 +266,7 @@ export default function ControlFinancieroPage() {
                 <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
                 <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} width={70} />
-                <Tooltip formatter={(v) => money.format(Number(v) || 0)} />
+                <Tooltip formatter={(v) => formatCurrencyCLP(Number(v) || 0)} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Line type="monotone" dataKey="ingresos" stroke="#0D47A1" strokeWidth={3} dot />
                 <Line type="monotone" dataKey="gastos" stroke="#FF8042" strokeWidth={3} dot />
@@ -319,7 +309,7 @@ export default function ControlFinancieroPage() {
               ) : (
                 data.movimientos.map((m, idx) => (
                   <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                    <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200 whitespace-nowrap">{fmtDate(m.fecha)}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200 whitespace-nowrap">{formatDateDDMMYYYY(m.fecha)}</td>
                     <td className="px-4 py-3 text-sm whitespace-nowrap">
                       <span
                         className={
@@ -334,7 +324,7 @@ export default function ControlFinancieroPage() {
                     <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200 whitespace-nowrap">{m.vehiculo || '—'}</td>
                     <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200 min-w-[260px]">{m.descripcion}</td>
                     <td className="px-4 py-3 text-sm text-gray-900 dark:text-white text-right whitespace-nowrap">
-                      {money.format(m.monto)}
+                      {formatCurrencyCLP(m.monto)}
                     </td>
                   </tr>
                 ))

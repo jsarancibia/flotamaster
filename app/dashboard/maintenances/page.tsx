@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Wrench, Plus, AlertCircle, CheckCircle, Car, X, DollarSign } from 'lucide-react'
+import { formatCurrencyCLP, formatDateDDMMYYYY } from '@/lib/format'
 
 interface Vehicle {
   id: string
@@ -85,13 +86,7 @@ export default function MaintenancesPage() {
     Promise.all([fetchMaintenances(), fetchVehicles()])
   }, [fetchMaintenances, fetchVehicles])
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0
-    }).format(amount)
-  }
+  const formatCurrency = (amount: number) => formatCurrencyCLP(amount)
 
   const pending = maintenances.filter(m => m.status === 'pendiente')
   const completed = maintenances.filter(m => m.status === 'completado')
@@ -310,7 +305,7 @@ export default function MaintenancesPage() {
                         </td>
                         <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{m.description}</td>
                         <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{formatCurrency(m.cost)}</td>
-                        <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{new Date(m.date).toLocaleDateString('es-CO')}</td>
+                        <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{formatDateDDMMYYYY(m.date)}</td>
                         <td className="px-6 py-4">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${m.status === 'pendiente' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400' : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'}`}>{m.status}</span>
                         </td>

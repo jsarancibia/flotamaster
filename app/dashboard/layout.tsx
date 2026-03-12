@@ -23,7 +23,7 @@ export default async function DashboardLayout({
     { href: '/dashboard/vehicles', iconName: 'Car', label: 'Vehículos' },
     { href: '/dashboard/drivers', iconName: 'Users', label: 'Conductores' },
     { href: '/dashboard/maintenances', iconName: 'Wrench', label: 'Mantenimientos' },
-    { href: '/dashboard/finances', iconName: 'TrendingUp', label: 'Finanzas' },
+    { href: '/dashboard/finances', iconName: 'TrendingUp', label: 'Pagos Semanales' },
     { href: '/dashboard/control-financiero', iconName: 'Wrench', label: 'Control Financiero' },
     { href: '/dashboard/repuestos', iconName: 'Package', label: 'Repuestos' },
   ]

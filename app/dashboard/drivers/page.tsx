@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Users, Plus, Phone, Car, Trash2, Edit2, X } from 'lucide-react'
+import ConfirmModal from '@/components/ConfirmModal'
 
 interface Driver {
   id: string
@@ -21,6 +22,8 @@ export default function DriversPage() {
   const [success, setSuccess] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -160,14 +163,13 @@ export default function DriversPage() {
     setError(null)
   }
 
-  const confirmDelete = (driver: Driver) => {
+  const requestDelete = (driver: Driver) => {
     if (driver.vehicle) {
       setError('No se puede eliminar: el chofer tiene un vehículo asignado')
       return
     }
-    if (confirm(`¿Estás seguro de eliminar al chofer "${driver.name}"?`)) {
-      handleDelete(driver.id)
-    }
+    setConfirmDeleteId(driver.id)
+    setConfirmDeleteOpen(true)
   }
 
   return (
@@ -192,7 +194,7 @@ export default function DriversPage() {
       {error && (
         <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">
+          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700" aria-label="Cerrar mensaje de error">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -201,7 +203,7 @@ export default function DriversPage() {
       {success && (
         <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-xl flex items-center justify-between">
           <span>{success}</span>
-          <button onClick={() => setSuccess(null)} className="text-green-500 hover:text-green-700">
+          <button onClick={() => setSuccess(null)} className="text-green-500 hover:text-green-700" aria-label="Cerrar mensaje de éxito">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -233,14 +235,16 @@ export default function DriversPage() {
                     onClick={() => openEditModal(driver)}
                     className="p-2 text-gray-400 hover:text-primary dark:hover:text-primary-400 transition-colors"
                     title="Editar"
+                    aria-label="Editar conductor"
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => confirmDelete(driver)}
+                    onClick={() => requestDelete(driver)}
                     disabled={deletingId === driver.id}
                     className="p-2 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
                     title="Eliminar"
+                    aria-label="Eliminar conductor"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -341,6 +345,23 @@ export default function DriversPage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmDeleteOpen}
+        title="Eliminar conductor"
+        message="¿Estás seguro de eliminar este conductor?"
+        confirming={!!deletingId}
+        onCancel={() => {
+          setConfirmDeleteOpen(false)
+          setConfirmDeleteId(null)
+        }}
+        onConfirm={() => {
+          if (!confirmDeleteId) return
+          handleDelete(confirmDeleteId)
+          setConfirmDeleteOpen(false)
+          setConfirmDeleteId(null)
+        }}
+      />
     </div>
   )
 }
