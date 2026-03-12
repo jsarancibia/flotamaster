@@ -54,6 +54,10 @@ export async function POST(request: NextRequest) {
     const tipoPago = normalizeTipoPago(body.tipoPago)
     const estado = body.estado as string | undefined
     const observaciones = (body.observaciones as string | undefined) || null
+    const comprobanteUrl =
+      body.comprobanteUrl === undefined || body.comprobanteUrl === null
+        ? null
+        : (typeof body.comprobanteUrl === 'string' ? body.comprobanteUrl : null)
 
     const fechaBase = fechaPago || semanaInicioRaw
     if (!conductorId || !vehiculoId || !fechaBase || monto === undefined || monto === null) {
@@ -86,7 +90,8 @@ export async function POST(request: NextRequest) {
         semanaFin,
         monto: montoNum,
         estado: estadoFinal,
-        observaciones
+        observaciones,
+        comprobanteUrl
       }
     })
 
@@ -158,6 +163,9 @@ export async function PATCH(request: NextRequest) {
     const observaciones = body.observaciones !== undefined
       ? ((body.observaciones as string | null) || null)
       : undefined
+    const comprobanteUrl = body.comprobanteUrl !== undefined
+      ? (body.comprobanteUrl === null ? null : (typeof body.comprobanteUrl === 'string' ? body.comprobanteUrl : undefined))
+      : undefined
 
     if (!id) {
       return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
@@ -188,6 +196,13 @@ export async function PATCH(request: NextRequest) {
 
     if (observaciones !== undefined) {
       data.observaciones = observaciones
+    }
+
+    if (comprobanteUrl !== undefined) {
+      if (comprobanteUrl !== null && typeof comprobanteUrl !== 'string') {
+        return NextResponse.json({ error: 'Comprobante inválido' }, { status: 400 })
+      }
+      data.comprobanteUrl = comprobanteUrl
     }
 
     const pago = await (prisma as any).pagoSemanal.update({

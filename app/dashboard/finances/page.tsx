@@ -40,6 +40,7 @@ interface PagoSemanal {
   monto: number
   estado: string
   observaciones: string | null
+  comprobanteUrl?: string | null
   createdAt: string
   conductor: { id: string; name: string }
   vehiculo: { id: string; plate: string; brand: string; model: string; weeklyRate?: number }
@@ -99,6 +100,35 @@ function getEstadoSemanal(totalAbonado: number, cuotaSemanal: number) {
   if (!totalAbonado || totalAbonado <= 0) return 'Pendiente'
   if (cuotaSemanal > 0 && totalAbonado >= cuotaSemanal) return 'Pagado'
   return 'Parcial'
+}
+
+async function uploadComprobante(file: File) {
+  const allowed = new Set(['image/jpeg', 'image/png', 'image/webp'])
+  if (!allowed.has(file.type)) {
+    throw new Error('Formato no permitido. Solo JPG, PNG o WEBP.')
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error('Archivo demasiado grande. Máximo 5MB.')
+  }
+
+  const fd = new FormData()
+  fd.append('file', file)
+
+  const res = await fetch('/api/uploads/comprobante', {
+    method: 'POST',
+    credentials: 'include',
+    body: fd,
+  })
+
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(data?.error || 'Error al subir comprobante')
+  }
+  if (!data?.url || typeof data.url !== 'string') {
+    throw new Error('No se pudo obtener URL del comprobante')
+  }
+
+  return data.url as string
 }
 
 export default function FinancesPage() {
@@ -349,11 +379,18 @@ export default function FinancesPage() {
     const monto = formData.get('monto') as string
     const tipoPago = (formData.get('tipoPago') as string) || 'abono'
     const observaciones = (formData.get('observaciones') as string) || ''
+    const comprobanteFile = formData.get('comprobante')
 
     const fechaPago = fechaSel ? parseDateInputValue(fechaSel) : null
 
     try {
       if (!fechaPago) throw new Error('Fecha de pago inválida')
+
+      let comprobanteUrl: string | null = null
+      if (comprobanteFile && comprobanteFile instanceof File && comprobanteFile.size > 0) {
+        comprobanteUrl = await uploadComprobante(comprobanteFile)
+      }
+
       const res = await fetch('/api/finances/payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -365,7 +402,8 @@ export default function FinancesPage() {
           fechaSeleccionada: fechaPago.toISOString(),
           tipoPago,
           monto,
-          observaciones: observaciones.trim() ? observaciones.trim() : null
+          observaciones: observaciones.trim() ? observaciones.trim() : null,
+          comprobanteUrl
         })
       })
 
@@ -615,14 +653,15 @@ export default function FinancesPage() {
                 <th className="text-left px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">Tipo</th>
                 <th className="text-left px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">Estado semanal</th>
                 <th className="text-left px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">Fecha pago</th>
+                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">Comprobante</th>
                 <th className="text-right px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {loading ? (
-                <tr><td colSpan={8} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">Cargando...</td></tr>
+                <tr><td colSpan={9} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">Cargando...</td></tr>
               ) : pagos.length === 0 ? (
-                <tr><td colSpan={8} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">No hay pagos registrados</td></tr>
+                <tr><td colSpan={9} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">No hay pagos registrados</td></tr>
               ) : (
                 pagos.map((p) => (
                   <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
@@ -654,6 +693,20 @@ export default function FinancesPage() {
                       })()}
                     </td>
                     <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{formatDate((p.fechaPago as any) || p.createdAt)}</td>
+                    <td className="px-6 py-4">
+                      {p.comprobanteUrl ? (
+                        <a
+                          href={p.comprobanteUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
+                        >
+                          Ver comprobante
+                        </a>
+                      ) : (
+                        <span className="text-sm text-gray-400 dark:text-gray-500">—</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
                         <button
@@ -765,6 +818,17 @@ export default function FinancesPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Observaciones (opcional)</label>
                 <textarea name="observaciones" rows={3} className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white outline-none" placeholder="Detalles del pago..." />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Subir comprobante (opcional)</label>
+                <input
+                  name="comprobante"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white outline-none"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Formatos: JPG, PNG, WEBP. Máximo 5MB.</p>
               </div>
 
               <div className="flex gap-3 pt-2">

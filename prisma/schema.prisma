@@ -70,6 +70,7 @@ model PagoSemanal {
   monto          Float    @map("monto")
   estado         String   @map("estado")
   observaciones  String?  @map("observaciones")
+  comprobanteUrl String?  @map("comprobante_url")
   createdAt      DateTime @default(now()) @map("created_at")
 
   @@index([conductorId])
