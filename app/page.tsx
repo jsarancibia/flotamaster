@@ -61,9 +61,9 @@ export default function Home() {
             <span className="font-heading font-bold text-xl text-primary">BlasRodríguez</span>
           </Link>
           <div className="hidden md:flex items-center gap-8">
-            <a href="#modulos" className="text-gray-600 dark:text-gray-200 hover:text-primary dark:hover:text-primary-300 transition-colors font-medium cursor-pointer">Módulos</a>
-            <a href="#operacion" className="text-gray-600 dark:text-gray-200 hover:text-primary dark:hover:text-primary-300 transition-colors font-medium cursor-pointer">Operación</a>
-            <a href="#soporte" className="text-gray-600 dark:text-gray-200 hover:text-primary dark:hover:text-primary-300 transition-colors font-medium cursor-pointer">Soporte</a>
+            <a href="#modulos" className="text-gray-700 dark:text-gray-100 hover:text-primary dark:hover:text-primary-200 transition-colors font-semibold cursor-pointer hover:underline underline-offset-4">Módulos</a>
+            <a href="#operacion" className="text-gray-700 dark:text-gray-100 hover:text-primary dark:hover:text-primary-200 transition-colors font-semibold cursor-pointer hover:underline underline-offset-4">Operación</a>
+            <a href="#soporte" className="text-gray-700 dark:text-gray-100 hover:text-primary dark:hover:text-primary-200 transition-colors font-semibold cursor-pointer hover:underline underline-offset-4">Soporte</a>
             <ThemeToggle variant="icon" />
             <Link 
               href="/login"
