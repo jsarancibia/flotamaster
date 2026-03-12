@@ -14,6 +14,7 @@ import {
   TrendingUp 
 } from 'lucide-react'
 import ConfirmModal from '@/components/ConfirmModal'
+import PaymentReceiptModal from '@/components/PaymentReceiptModal'
 import { formatCurrencyCLP, formatDateDDMMYYYY } from '@/lib/format'
 import { exportReporteFinancieroSemanalExcel, exportReporteFinancieroSemanalPDF } from '@/lib/exportUtils'
 
@@ -156,6 +157,10 @@ export default function FinancesPage() {
 
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [deletingPayment, setDeletingPayment] = useState(false)
+
+  const [receiptOpen, setReceiptOpen] = useState(false)
+  const [receiptPago, setReceiptPago] = useState<PagoSemanal | null>(null)
 
   const fetchBaseData = useCallback(async () => {
     setLoading(true)
@@ -196,6 +201,7 @@ export default function FinancesPage() {
     if (!confirmDeleteId) return
     setError(null)
     setSuccess(null)
+    setDeletingPayment(true)
     try {
       const res = await fetch(`/api/finances/payments?id=${encodeURIComponent(confirmDeleteId)}`, {
         method: 'DELETE',
@@ -217,6 +223,7 @@ export default function FinancesPage() {
       console.error('Error deleting payment:', e)
       setError('Error de conexión')
     } finally {
+      setDeletingPayment(false)
       setConfirmDeleteOpen(false)
       setConfirmDeleteId(null)
     }
@@ -695,14 +702,16 @@ export default function FinancesPage() {
                     <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{formatDate((p.fechaPago as any) || p.createdAt)}</td>
                     <td className="px-6 py-4">
                       {p.comprobanteUrl ? (
-                        <a
-                          href={p.comprobanteUrl}
-                          target="_blank"
-                          rel="noreferrer"
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReceiptPago(p)
+                            setReceiptOpen(true)
+                          }}
                           className="inline-flex items-center px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
                         >
                           Ver comprobante
-                        </a>
+                        </button>
                       ) : (
                         <span className="text-sm text-gray-400 dark:text-gray-500">—</span>
                       )}
@@ -896,6 +905,35 @@ export default function FinancesPage() {
           </div>
         </div>
       )}
+
+      {receiptOpen && receiptPago?.comprobanteUrl && (
+        <PaymentReceiptModal
+          open={receiptOpen}
+          onClose={() => {
+            setReceiptOpen(false)
+            setReceiptPago(null)
+          }}
+          comprobanteUrl={receiptPago.comprobanteUrl}
+          chofer={receiptPago.conductor?.name || 'N/A'}
+          patente={receiptPago.vehiculo?.plate || '—'}
+          fecha={(receiptPago.fechaPago as any) || receiptPago.createdAt}
+          monto={Number(receiptPago.monto) || 0}
+        />
+      )}
+
+      <ConfirmModal
+        open={confirmDeleteOpen}
+        title="Eliminar pago"
+        message="¿Seguro que deseas eliminar este pago?"
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        confirming={deletingPayment}
+        onConfirm={handleDelete}
+        onCancel={() => {
+          setConfirmDeleteOpen(false)
+          setConfirmDeleteId(null)
+        }}
+      />
     </div>
   )
 }
