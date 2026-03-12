@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { 
@@ -11,6 +12,8 @@ import {
   Clock,
   CheckCircle,
   ArrowRight,
+  Menu,
+  X,
   Phone,
   Mail,
   MapPin,
@@ -44,6 +47,8 @@ const floatAnimation = {
 }
 
 export default function Home() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   return (
     <div className="min-h-screen overflow-x-hidden">
       {/* Navigation */}
@@ -60,6 +65,19 @@ export default function Home() {
             </div>
             <span className="font-heading font-bold text-xl text-primary">BlasRodríguez</span>
           </Link>
+
+          <div className="md:hidden flex items-center gap-3">
+            <ThemeToggle variant="icon" />
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Abrir menú"
+              className="inline-flex items-center justify-center p-2.5 rounded-xl border border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-gray-900/60 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          </div>
+
           <div className="hidden md:flex items-center gap-8">
             <a href="#modulos" className="text-gray-700 dark:text-gray-100 hover:text-primary dark:hover:text-primary-200 transition-colors font-semibold cursor-pointer hover:underline underline-offset-4">Módulos</a>
             <a href="#operacion" className="text-gray-700 dark:text-gray-100 hover:text-primary dark:hover:text-primary-200 transition-colors font-semibold cursor-pointer hover:underline underline-offset-4">Operación</a>
@@ -74,6 +92,70 @@ export default function Home() {
           </div>
         </div>
       </motion.nav>
+
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-[60]">
+          <button
+            type="button"
+            aria-label="Cerrar menú"
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+
+          <div className="absolute top-0 left-0 right-0 p-4">
+            <div className="glass dark:glass-dark border border-white/20 dark:border-gray-800/60 rounded-2xl overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-4 border-b border-white/20 dark:border-gray-800/60">
+                <span className="font-heading font-bold text-primary dark:text-white">Menú</span>
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(false)}
+                  aria-label="Cerrar menú"
+                  className="inline-flex items-center justify-center p-2 rounded-xl hover:bg-white/40 dark:hover:bg-gray-800/60 text-gray-700 dark:text-gray-200 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-4 grid gap-2">
+                <a
+                  href="#modulos"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-4 py-3 rounded-xl text-gray-800 dark:text-gray-100 hover:bg-white/40 dark:hover:bg-gray-800/60 transition-colors font-semibold"
+                >
+                  Módulos
+                </a>
+                <a
+                  href="#operacion"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-4 py-3 rounded-xl text-gray-800 dark:text-gray-100 hover:bg-white/40 dark:hover:bg-gray-800/60 transition-colors font-semibold"
+                >
+                  Operación
+                </a>
+                <a
+                  href="#soporte"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-4 py-3 rounded-xl text-gray-800 dark:text-gray-100 hover:bg-white/40 dark:hover:bg-gray-800/60 transition-colors font-semibold"
+                >
+                  Soporte
+                </a>
+
+                <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-white/20 dark:border-gray-800/60">
+                  <span className="text-gray-700 dark:text-gray-200 font-medium">Tema</span>
+                  <ThemeToggle variant="icon" />
+                </div>
+
+                <Link
+                  href="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="mt-2 bg-primary text-white px-6 py-3 rounded-xl font-semibold hover:bg-primary-800 transition-all hover:shadow-lg hover:shadow-primary/30 text-center"
+                >
+                  Iniciar Sesión
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center overflow-hidden bg-gradient-to-br from-gray-50 via-white to-accent-light dark:from-gray-950 dark:via-gray-900 dark:to-gray-900">
