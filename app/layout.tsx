@@ -18,6 +18,14 @@ const openSans = Open_Sans({
 export const metadata: Metadata = {
   title: 'BlasRodríguez - Administración de Flota de Taxis y Colectivos',
   description: 'Sistema integral para administrar taxis y colectivos. Controla mantenimientos, asignaciones y operación diaria de tu flota vehicular.',
+  icons: {
+    icon: [
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon.ico' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
 }
 
 export const viewport: Viewport = {

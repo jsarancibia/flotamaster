@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Car, LayoutDashboard, LogOut, Menu, Package, Settings, TrendingUp, Users, Wrench, X } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { BrandLogo } from '@/components/BrandLogo'
 
 type NavItem = {
   href: string
@@ -40,9 +41,7 @@ export default function DashboardShell({
           className="flex items-center gap-3"
           onClick={() => setMobileOpen(false)}
         >
-          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-            <Car className="w-6 h-6 text-white" />
-          </div>
+          <BrandLogo size={40} className="shrink-0" priority />
           <span className="font-heading font-bold text-lg text-primary dark:text-white">BlasRodríguez</span>
         </Link>
       </div>
@@ -99,9 +98,7 @@ export default function DashboardShell({
           </button>
 
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Car className="w-5 h-5 text-white" />
-            </div>
+            <BrandLogo size={32} className="shrink-0" priority />
             <span className="font-heading font-bold text-primary dark:text-white">BlasRodríguez</span>
           </Link>
 

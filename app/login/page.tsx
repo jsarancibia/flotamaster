@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Car, Eye, EyeOff, LogIn, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, LogIn, Loader2 } from 'lucide-react'
+import { BrandLogo } from '@/components/BrandLogo'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -54,7 +55,7 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-3">
             <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-lg">
-              <Car className="w-8 h-8 text-primary" />
+              <BrandLogo size={44} priority />
             </div>
             <span className="font-heading font-bold text-2xl text-white">BlasRodríguez</span>
           </Link>

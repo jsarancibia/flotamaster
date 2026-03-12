@@ -20,6 +20,7 @@ import {
   Star
 } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { BrandLogo } from '@/components/BrandLogo'
 
 const fadeInUp = {
   initial: { opacity: 0, y: 30 },
@@ -60,9 +61,7 @@ export default function Home() {
       >
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 cursor-pointer">
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-              <Car className="w-6 h-6 text-white" />
-            </div>
+            <BrandLogo size={40} className="shrink-0" priority />
             <span className="font-heading font-bold text-xl text-primary">BlasRodríguez</span>
           </Link>
 
@@ -509,9 +508,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                <Car className="w-6 h-6 text-white" />
-              </div>
+              <BrandLogo size={40} className="shrink-0" />
               <span className="font-heading font-bold text-xl">BlasRodríguez</span>
             </div>
             <p className="text-gray-400 text-sm">
