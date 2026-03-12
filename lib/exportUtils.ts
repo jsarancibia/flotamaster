@@ -290,7 +290,7 @@ export function exportFinanzasResumenPDF(input: {
   const doc = new jsPDF()
 
   doc.setFontSize(18)
-  doc.text('Resumen Financiero FlotaMaster', 14, 20)
+  doc.text('Resumen Financiero BlasRodríguez', 14, 20)
 
   doc.setFontSize(12)
   doc.text(`Semana: ${formatDate(input.semanaInicio)} - ${formatDate(input.semanaFin)}`, 14, 30)
@@ -322,7 +322,7 @@ export function exportFinanzasResumenPDF(input: {
   doc.setFontSize(12)
   doc.text(`Total recaudado: ${formatCurrency(input.totalRecaudado)}`, 14, finalY)
 
-  doc.save('resumen-financiero-flotamaster.pdf')
+  doc.save('resumen-financiero-blasrodriguez.pdf')
 }
 
 export function exportReporteFinancieroSemanalPDF(input: {

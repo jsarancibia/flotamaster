@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     const { password } = await request.json()
     
     const user = await prisma.user.findFirst({
-      where: { email: { contains: 'flotamaster' } }
+      where: { email: { contains: 'blasrodriguez' } }
     })
 
     if (!user) {

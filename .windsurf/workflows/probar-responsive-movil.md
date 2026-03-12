@@ -3,7 +3,7 @@ description: Probar y validar responsive en móviles
 ---
 
 # Objetivo
-Validar que FlotaMaster se vea y funcione bien en teléfonos móviles (UI responsive + usabilidad táctil) y detectar problemas comunes (overflow, targets pequeños, modales cortados, tablas inmanejables, etc.).
+Validar que BlasRodríguez se vea y funcione bien en teléfonos móviles (UI responsive + usabilidad táctil) y detectar problemas comunes (overflow, targets pequeños, modales cortados, tablas inmanejables, etc.).
 
 # Alcance
 - Login / Logout
@@ -80,7 +80,7 @@ Validar que FlotaMaster se vea y funcione bien en teléfonos móviles (UI respon
 4. Prueba scroll, taps, teclado y orientación.
 
 ## Opción 2: producción
-1. Abre `https://flotamaster.vercel.app` en el teléfono.
+1. Abre `https://blasrodriguez.vercel.app` en el teléfono.
 2. Repite el checklist funcional.
 
 # Cómo detectar problemas comunes

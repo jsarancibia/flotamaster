@@ -5,7 +5,7 @@ import DashboardShell from '@/components/DashboardShell'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-type NavIconName = 'LayoutDashboard' | 'Car' | 'Users' | 'Wrench' | 'TrendingUp' | 'Settings'
+type NavIconName = 'LayoutDashboard' | 'Car' | 'Users' | 'Wrench' | 'TrendingUp' | 'Settings' | 'Package'
 
 export default async function DashboardLayout({
   children,
@@ -19,12 +19,13 @@ export default async function DashboardLayout({
   }
 
   const navItems: Array<{ href: string; iconName: NavIconName; label: string }> = [
-    { href: '/dashboard', iconName: 'LayoutDashboard', label: 'Panel' },
+    { href: '/dashboard', iconName: 'LayoutDashboard', label: 'Dashboard' },
     { href: '/dashboard/vehicles', iconName: 'Car', label: 'Vehículos' },
     { href: '/dashboard/drivers', iconName: 'Users', label: 'Conductores' },
     { href: '/dashboard/maintenances', iconName: 'Wrench', label: 'Mantenimientos' },
     { href: '/dashboard/finances', iconName: 'TrendingUp', label: 'Finanzas' },
-    { href: '/dashboard/settings', iconName: 'Settings', label: 'Configuración' },
+    { href: '/dashboard/control-financiero', iconName: 'Wrench', label: 'Control Financiero' },
+    { href: '/dashboard/repuestos', iconName: 'Package', label: 'Repuestos' },
   ]
 
   return (

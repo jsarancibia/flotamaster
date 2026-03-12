@@ -56,7 +56,7 @@ export default function LoginPage() {
             <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-lg">
               <Car className="w-8 h-8 text-primary" />
             </div>
-            <span className="font-heading font-bold text-2xl text-white">FlotaMaster</span>
+            <span className="font-heading font-bold text-2xl text-white">BlasRodríguez</span>
           </Link>
         </div>
 

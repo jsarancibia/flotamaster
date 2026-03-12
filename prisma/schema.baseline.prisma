@@ -39,7 +39,6 @@ model Vehicle {
   incomes     Income[]
   weeklyPayments WeeklyPayment[]
   pagosSemanales PagoSemanal[]
-  repuestos   Repuesto[]
 }
 
 model Driver {
@@ -154,21 +153,4 @@ model WeeklyPayment {
   updatedAt   DateTime @updatedAt
 
   @@unique([vehicleId, weekNumber, year])
-}
-
-model Repuesto {
-  id            String   @id @default(cuid())
-  nombre        String   @map("nombre")
-  descripcion   String?  @map("descripcion")
-  vehiculo      Vehicle? @relation(fields: [vehiculoId], references: [id])
-  vehiculoId    String?  @map("vehiculo_id")
-  cantidad      Int      @map("cantidad")
-  precioUnitario Float   @map("precio_unitario")
-  fechaCompra   DateTime @default(now()) @map("fecha_compra")
-  proveedor     String?  @map("proveedor")
-  createdAt     DateTime @default(now()) @map("created_at")
-
-  @@index([vehiculoId])
-  @@index([fechaCompra])
-  @@map("repuestos")
 }

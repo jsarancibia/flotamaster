@@ -44,7 +44,7 @@ const floatAnimation = {
 
 export default function Home() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen overflow-x-hidden">
       {/* Navigation */}
       <motion.nav 
         initial={{ y: -100 }}
@@ -57,7 +57,7 @@ export default function Home() {
             <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
               <Car className="w-6 h-6 text-white" />
             </div>
-            <span className="font-heading font-bold text-xl text-primary">FlotaMaster</span>
+            <span className="font-heading font-bold text-xl text-primary">BlasRodríguez</span>
           </Link>
           <div className="hidden md:flex items-center gap-8">
             <a href="#modulos" className="text-gray-600 hover:text-primary transition-colors font-medium cursor-pointer">Módulos</a>
@@ -283,7 +283,7 @@ export default function Home() {
       </section>
 
       {/* Benefits Section */}
-      <section id="operacion" className="py-24 bg-gradient-to-br from-primary to-primary-800 text-white overflow-hidden">
+      <section id="operacion" className="relative py-24 bg-gradient-to-br from-primary to-primary-800 text-white overflow-hidden">
         <div className="absolute inset-0">
           <div className="absolute top-0 left-1/4 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
           <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/30 rounded-full blur-3xl" />
@@ -428,10 +428,10 @@ export default function Home() {
               <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
                 <Car className="w-6 h-6 text-white" />
               </div>
-              <span className="font-heading font-bold text-xl">FlotaMaster</span>
+              <span className="font-heading font-bold text-xl">BlasRodríguez</span>
             </div>
             <p className="text-gray-400 text-sm">
-              © 2024 FlotaMaster. Todos los derechos reservados.
+              © 2024 BlasRodríguez. Todos los derechos reservados.
             </p>
           </div>
         </div>

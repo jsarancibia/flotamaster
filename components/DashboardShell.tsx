@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Car, LayoutDashboard, LogOut, Menu, Settings, TrendingUp, Users, Wrench, X } from 'lucide-react'
+import { Car, LayoutDashboard, LogOut, Menu, Package, Settings, TrendingUp, Users, Wrench, X } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
 
 type NavItem = {
@@ -19,6 +19,7 @@ const ICONS = {
   Wrench,
   TrendingUp,
   Settings,
+  Package,
 } as const
 
 export default function DashboardShell({
@@ -42,7 +43,7 @@ export default function DashboardShell({
           <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
             <Car className="w-6 h-6 text-white" />
           </div>
-          <span className="font-heading font-bold text-lg text-primary dark:text-white">FlotaMaster</span>
+          <span className="font-heading font-bold text-lg text-primary dark:text-white">BlasRodríguez</span>
         </Link>
       </div>
 
@@ -101,7 +102,7 @@ export default function DashboardShell({
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <Car className="w-5 h-5 text-white" />
             </div>
-            <span className="font-heading font-bold text-primary dark:text-white">FlotaMaster</span>
+            <span className="font-heading font-bold text-primary dark:text-white">BlasRodríguez</span>
           </Link>
 
           <div className="w-10" />

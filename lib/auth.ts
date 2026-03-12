@@ -2,7 +2,7 @@ import { cookies } from 'next/headers'
 import { prisma } from './prisma'
 import bcrypt from 'bcryptjs'
 
-const AUTH_COOKIE = 'flotamaster_auth'
+const AUTH_COOKIE = 'blasrodriguez_auth'
 
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 10)
