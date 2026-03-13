@@ -54,7 +54,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-3">
-            <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-lg">
+            <div className="w-14 h-14 bg-white dark:bg-white/10 rounded-2xl flex items-center justify-center shadow-lg dark:shadow-white/5">
               <BrandLogo size={44} priority />
             </div>
             <span className="font-heading font-bold text-2xl text-white">BlasRodríguez</span>

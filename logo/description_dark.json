@@ -1,0 +1,85 @@
+{
+  "scene": {
+    "description": "A white logo on a transparent background, featuring stylized wings with a halo above them, framing a line-art taxi car, and the name 'BLAS RODRÍGUEZ' below in a decorative font. All elements are white, designed to be placed on dark backgrounds.",
+    "type": "logo"
+  },
+  "background": {
+    "type": "transparent",
+    "colors": [],
+    "description": "Transparent background (no background). Render on solid white for now."
+  },
+  "elements": [
+    {
+      "id": 1,
+      "type": "shape",
+      "description": "Stylized angel wings, rendered in a bold, calligraphic line style, flaring outwards to the left and right.",
+      "position": {
+        "x": "center",
+        "y": "center"
+      },
+      "size": "medium",
+      "colors": [
+        "#FFFFFF"
+      ],
+      "style": "filled",
+      "details": "Bold, expressive brushstroke-like shapes forming wings with clear feather-like divisions. All in pure white color."
+    },
+    {
+      "id": 2,
+      "type": "shape",
+      "description": "A simple oval shape representing a halo, positioned horizontally above and between the wings.",
+      "position": {
+        "x": "center",
+        "y": "top"
+      },
+      "size": "small",
+      "colors": [
+        "#FFFFFF"
+      ],
+      "style": "outlined",
+      "details": "A continuous white outline forming an oval."
+    },
+    {
+      "id": 3,
+      "type": "object",
+      "description": "A line-art illustration of a taxi car, depicted from a front-three-quarter view.",
+      "position": {
+        "x": "center",
+        "y": "center"
+      },
+      "size": "small",
+      "colors": [
+        "#E0E0E0"
+      ],
+      "style": "outlined",
+      "details": "A detailed but thin-line drawing showing the car's body, windows, headlights, wheels, and a small taxi sign on the roof. The line weight is much finer than the wings. All lines in light white/grey color."
+    }
+  ],
+  "text_content": [
+    {
+      "text": "BLAS RODRÍGUEZ",
+      "font": "serif",
+      "weight": "bold",
+      "color": "#FFFFFF",
+      "position": {
+        "x": "center",
+        "y": "bottom"
+      },
+      "size": "medium"
+    }
+  ],
+  "style": {
+    "art_style": "vector",
+    "color_scheme": "monochrome",
+    "mood": "classic",
+    "effects": []
+  },
+  "colors": {
+    "palette": [
+      "#FFFFFF",
+      "#E0E0E0"
+    ],
+    "dominant": "#FFFFFF",
+    "accent": "#E0E0E0"
+  }
+}
