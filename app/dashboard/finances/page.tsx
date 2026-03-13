@@ -760,16 +760,26 @@ export default function FinancesPage() {
                     <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{formatDate((p.fechaPago as any) || p.createdAt)}</td>
                     <td className="px-6 py-4">
                       {p.comprobanteUrl ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setReceiptPago(p)
-                            setReceiptOpen(true)
-                          }}
-                          className="inline-flex items-center px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
-                        >
-                          Ver comprobante
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReceiptPago(p)
+                              setReceiptOpen(true)
+                            }}
+                            className="inline-flex items-center px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
+                          >
+                            Ver comprobante
+                          </button>
+                          <a
+                            href={p.comprobanteUrl}
+                            download="comprobante.jpg"
+                            className="inline-flex items-center px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 text-sm"
+                            aria-label="Descargar comprobante"
+                          >
+                            <Download className="w-4 h-4" />
+                          </a>
+                        </div>
                       ) : (
                         <span className="text-sm text-gray-400 dark:text-gray-500">—</span>
                       )}

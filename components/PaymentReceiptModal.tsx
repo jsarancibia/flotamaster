@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { X } from 'lucide-react'
+import { X, Download } from 'lucide-react'
 import { formatCurrencyCLP, formatDateDDMMYYYY } from '@/lib/format'
 
 export default function PaymentReceiptModal({
@@ -67,6 +67,14 @@ export default function PaymentReceiptModal({
             alt="Comprobante de pago"
             className="max-h-[70vh] object-contain mx-auto rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
           />
+          <a
+            href={comprobanteUrl}
+            download="comprobante.jpg"
+            className="mt-3 flex items-center justify-center gap-2 w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            Descargar comprobante
+          </a>
         </div>
 
         <div className="space-y-1 text-sm text-gray-700 dark:text-gray-200">
