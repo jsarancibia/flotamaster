@@ -103,6 +103,61 @@ function getEstadoSemanal(totalAbonado: number, cuotaSemanal: number) {
   return 'Parcial'
 }
 
+async function compressImage(file: File): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      let { width, height } = img
+
+      if (width > 1200) {
+        height = (height * 1200) / width
+        width = 1200
+      }
+
+      canvas.width = width
+      canvas.height = height
+
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        reject(new Error('No se pudo crear contexto de canvas'))
+        return
+      }
+
+      ctx.drawImage(img, 0, 0, width, height)
+
+      let quality = 0.7
+      let blob: Blob | null = null
+
+      const tryCompress = (q: number): void => {
+        canvas.toBlob(
+          (b) => {
+            if (!b) {
+              reject(new Error('Error al comprimir imagen'))
+              return
+            }
+            blob = b
+            if (b.size > 300 * 1024 && q > 0.1) {
+              tryCompress(q - 0.1)
+            } else {
+              const compressedFile = new File([blob!], file.name.replace(/\.[^.]+$/, '.jpg'), {
+                type: 'image/jpeg',
+              })
+              resolve(compressedFile)
+            }
+          },
+          'image/jpeg',
+          q
+        )
+      }
+
+      tryCompress(quality)
+    }
+    img.onerror = () => reject(new Error('Error al cargar imagen'))
+    img.src = URL.createObjectURL(file)
+  })
+}
+
 async function uploadComprobante(file: File) {
   const allowed = new Set(['image/jpeg', 'image/png', 'image/webp'])
   if (!allowed.has(file.type)) {
@@ -140,6 +195,7 @@ export default function FinancesPage() {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [comprimidoFile, setComprimidoFile] = useState<File | null>(null)
   const [editingPago, setEditingPago] = useState<PagoSemanal | null>(null)
 
   const now = new Date()
@@ -394,8 +450,9 @@ export default function FinancesPage() {
       if (!fechaPago) throw new Error('Fecha de pago inválida')
 
       let comprobanteUrl: string | null = null
-      if (comprobanteFile && comprobanteFile instanceof File && comprobanteFile.size > 0) {
-        comprobanteUrl = await uploadComprobante(comprobanteFile)
+      const fileToUpload = comprimidoFile || (comprobanteFile && comprobanteFile instanceof File && comprobanteFile.size > 0 ? comprobanteFile : null)
+      if (fileToUpload) {
+        comprobanteUrl = await uploadComprobante(fileToUpload)
       }
 
       const res = await fetch('/api/finances/payments', {
@@ -428,6 +485,7 @@ export default function FinancesPage() {
 
       setSuccess('Pago registrado')
       setShowModal(false)
+      setComprimidoFile(null)
       await fetchPagosYResumen()
       setTimeout(() => setSuccess(null), 2500)
     } catch (e) {
@@ -753,7 +811,7 @@ export default function FinancesPage() {
           <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-heading text-xl font-bold dark:text-white">Registrar Pago</h3>
-              <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" aria-label="Cerrar">
+              <button onClick={() => { setShowModal(false); setComprimidoFile(null) }} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" aria-label="Cerrar">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -836,12 +894,27 @@ export default function FinancesPage() {
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
                   className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white outline-none"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    console.log('Tamaño original:', (file.size / 1024).toFixed(2) + 'KB')
+                    try {
+                      const compressed = await compressImage(file)
+                      console.log('Tamaño comprimido:', (compressed.size / 1024).toFixed(2) + 'KB')
+                      setComprimidoFile(compressed)
+                    } catch (err) {
+                      console.error('Error al comprimir:', err)
+                    }
+                  }}
                 />
+                {comprimidoFile && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">Imagen comprimida lista para subir</p>
+                )}
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Formatos: JPG, PNG, WEBP. Máximo 5MB.</p>
               </div>
 
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl">Cancelar</button>
+                <button type="button" onClick={() => { setShowModal(false); setComprimidoFile(null) }} className="flex-1 px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl">Cancelar</button>
                 <button type="submit" className="flex-1 px-6 py-2 bg-primary text-white rounded-xl font-medium hover:bg-primary-800">Guardar</button>
               </div>
             </form>

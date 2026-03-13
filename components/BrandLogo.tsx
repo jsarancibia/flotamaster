@@ -22,7 +22,7 @@ export function BrandLogo({
         width={size}
         height={size}
         priority={priority}
-        className="block dark:hidden w-auto h-auto object-contain"
+        className="block dark:hidden w-full h-full object-contain"
       />
       <Image
         src="/brand/logo-light.png"
@@ -30,7 +30,7 @@ export function BrandLogo({
         width={size}
         height={size}
         priority={priority}
-        className="hidden dark:block w-auto h-auto object-contain"
+        className="hidden dark:block w-full h-full object-contain"
       />
     </span>
   )
