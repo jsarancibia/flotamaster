@@ -771,14 +771,25 @@ export default function FinancesPage() {
                           >
                             Ver comprobante
                           </button>
-                          <a
-                            href={p.comprobanteUrl}
-                            download="comprobante.jpg"
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const res = await fetch(p.comprobanteUrl)
+                              const blob = await res.blob()
+                              const url = URL.createObjectURL(blob)
+                              const a = document.createElement('a')
+                              a.href = url
+                              a.download = 'comprobante.jpg'
+                              document.body.appendChild(a)
+                              a.click()
+                              document.body.removeChild(a)
+                              URL.revokeObjectURL(url)
+                            }}
                             className="inline-flex items-center px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 text-sm"
                             aria-label="Descargar comprobante"
                           >
                             <Download className="w-4 h-4" />
-                          </a>
+                          </button>
                         </div>
                       ) : (
                         <span className="text-sm text-gray-400 dark:text-gray-500">—</span>
