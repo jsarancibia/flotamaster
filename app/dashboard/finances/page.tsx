@@ -775,12 +775,18 @@ export default function FinancesPage() {
                             type="button"
                             onClick={async () => {
                               if (!p.comprobanteUrl) return
+                              const d = new Date((p.fechaPago as any) || p.createdAt)
+                              const dd = String(d.getDate()).padStart(2, '0')
+                              const mm = String(d.getMonth() + 1).padStart(2, '0')
+                              const yyyy = d.getFullYear()
+                              const plate = (p.vehiculo?.plate || 'SIN-PATENTE').replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+                              const fname = `${plate}-${dd}-${mm}-${yyyy}.jpg`
                               const res = await fetch(p.comprobanteUrl)
                               const blob = await res.blob()
                               const url = URL.createObjectURL(blob)
                               const a = document.createElement('a')
                               a.href = url
-                              a.download = 'comprobante.jpg'
+                              a.download = fname
                               document.body.appendChild(a)
                               a.click()
                               document.body.removeChild(a)

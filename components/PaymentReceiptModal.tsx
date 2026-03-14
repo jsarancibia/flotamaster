@@ -4,6 +4,15 @@ import { useEffect, useCallback } from 'react'
 import { X, Download } from 'lucide-react'
 import { formatCurrencyCLP, formatDateDDMMYYYY } from '@/lib/format'
 
+function buildFilename(patente: string, fecha: string | Date) {
+  const d = new Date(fecha)
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yyyy = d.getFullYear()
+  const plate = patente.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() || 'SIN-PATENTE'
+  return `${plate}-${dd}-${mm}-${yyyy}.jpg`
+}
+
 async function forceDownload(url: string, filename: string) {
   const res = await fetch(url)
   const blob = await res.blob()
@@ -83,7 +92,7 @@ export default function PaymentReceiptModal({
             />
             <button
               type="button"
-              onClick={() => forceDownload(comprobanteUrl, 'comprobante.jpg')}
+              onClick={() => forceDownload(comprobanteUrl, buildFilename(patente, fecha))}
               className="mt-3 flex items-center justify-center gap-2 w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
             >
               <Download className="w-4 h-4" />
