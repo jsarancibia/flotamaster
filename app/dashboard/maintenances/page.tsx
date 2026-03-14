@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Wrench, Plus, AlertCircle, CheckCircle, Car, X, DollarSign } from 'lucide-react'
+import { Wrench, Plus, AlertCircle, CheckCircle, Car, X, Package, Trash2 } from 'lucide-react'
 import { formatCurrencyCLP, formatDateDDMMYYYY } from '@/lib/format'
 
 interface Vehicle {
@@ -38,16 +38,34 @@ interface Maintenance {
   vehicle: { id: string; plate: string }
 }
 
+interface Repuesto {
+  id: string
+  nombre: string
+  cantidadActual: number
+  cantidadComprada: number
+  precioUnitario: number
+  vehiculo: { id: string; plate: string } | null
+}
+
+interface RepuestoSeleccionado {
+  repuestoId: string
+  cantidad: number
+}
+
 export default function MaintenancesPage() {
   const [maintenances, setMaintenances] = useState<Maintenance[]>([])
   const [maintenanceVehicles, setMaintenanceVehicles] = useState<MaintenanceVehicle[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [availableVehicles, setAvailableVehicles] = useState<Vehicle[]>([])
+  const [repuestos, setRepuestos] = useState<Repuesto[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
   const router = useRouter()
+
+  const [repuestosSeleccionados, setRepuestosSeleccionados] = useState<RepuestoSeleccionado[]>([])
 
   const fetchMaintenances = useCallback(async () => {
     try {
@@ -82,27 +100,70 @@ export default function MaintenancesPage() {
     }
   }, [])
 
+  const fetchRepuestos = useCallback(async () => {
+    try {
+      const res = await fetch('/api/repuestos', { credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json()
+        setRepuestos((data?.repuestos || []) as Repuesto[])
+      }
+    } catch {
+      setRepuestos([])
+    }
+  }, [])
+
   useEffect(() => {
-    Promise.all([fetchMaintenances(), fetchVehicles()])
-  }, [fetchMaintenances, fetchVehicles])
+    Promise.all([fetchMaintenances(), fetchVehicles(), fetchRepuestos()])
+  }, [fetchMaintenances, fetchVehicles, fetchRepuestos])
 
   const formatCurrency = (amount: number) => formatCurrencyCLP(amount)
 
   const pending = maintenances.filter(m => m.status === 'pendiente')
   const completed = maintenances.filter(m => m.status === 'completado')
-  const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+
+  const repuestosDisponibles = repuestos.filter(
+    r => r.cantidadActual > 0 && !repuestosSeleccionados.some(s => s.repuestoId === r.id)
+  )
+
+  const agregarRepuesto = (repuestoId: string) => {
+    if (!repuestoId) return
+    setRepuestosSeleccionados(prev => [...prev, { repuestoId, cantidad: 1 }])
+  }
+
+  const quitarRepuesto = (repuestoId: string) => {
+    setRepuestosSeleccionados(prev => prev.filter(s => s.repuestoId !== repuestoId))
+  }
+
+  const cambiarCantidad = (repuestoId: string, cantidad: number) => {
+    const rep = repuestos.find(r => r.id === repuestoId)
+    if (!rep) return
+    const clamped = Math.max(1, Math.min(rep.cantidadActual, cantidad))
+    setRepuestosSeleccionados(prev =>
+      prev.map(s => s.repuestoId === repuestoId ? { ...s, cantidad: clamped } : s)
+    )
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError(null)
+    setSubmitting(true)
     const formData = new FormData(e.currentTarget)
-    
+
+    const payload: any = Object.fromEntries(formData)
+
+    if (repuestosSeleccionados.length > 0) {
+      payload.repuestosUsados = repuestosSeleccionados.map(s => ({
+        id: s.repuestoId,
+        cantidad: s.cantidad,
+      }))
+    }
+
     try {
       const res = await fetch('/api/maintenances', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(Object.fromEntries(formData))
+        body: JSON.stringify(payload)
       })
 
       const data = await res.json()
@@ -114,17 +175,22 @@ export default function MaintenancesPage() {
 
       if (!res.ok) {
         setError(data.error || 'Error al crear mantenimiento')
+        setSubmitting(false)
         return
       }
 
       setSuccess('Mantenimiento registrado exitosamente')
       setShowModal(false)
+      setRepuestosSeleccionados([])
       fetchMaintenances()
       fetchVehicles()
+      fetchRepuestos()
       setTimeout(() => setSuccess(null), 3000)
     } catch (error) {
       console.error('Error creating maintenance:', error)
       setError('Error de conexión')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -173,6 +239,12 @@ export default function MaintenancesPage() {
     }
   }
 
+  const openModal = () => {
+    setRepuestosSeleccionados([])
+    setError(null)
+    setShowModal(true)
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -183,7 +255,7 @@ export default function MaintenancesPage() {
 
         <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={() => setShowModal(true)}
+            onClick={openModal}
             className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-medium hover:bg-primary-800 transition-colors"
           >
             <Plus className="w-5 h-5" />
@@ -325,49 +397,127 @@ export default function MaintenancesPage() {
 
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h3 className="font-heading text-xl font-bold mb-4 dark:text-white">Nuevo Mantenimiento</h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vehículo</label>
-                <select name="vehicleId" required className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white dark:bg-gray-700 dark:text-white">
-                  <option value="">Seleccionar...</option>
-                  {vehicles.map((v) => (<option key={v.id} value={v.id}>{v.plate} - {v.brand} {v.model}</option>))}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl w-full max-w-lg max-h-[90vh] flex flex-col border border-gray-200 dark:border-gray-700 shadow-xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="font-heading text-xl font-bold dark:text-white">Nuevo Mantenimiento</h3>
+              <button onClick={() => setShowModal(false)} className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700" aria-label="Cerrar">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-6 py-5">
+              <form id="maintenance-form" onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo</label>
-                  <select name="type" required className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white dark:bg-gray-700 dark:text-white">
-                    <option value="preventivo">Preventivo</option>
-                    <option value="correctivo">Correctivo</option>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vehículo</label>
+                  <select name="vehicleId" required className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white dark:bg-gray-700 dark:text-white">
+                    <option value="">Seleccionar...</option>
+                    {vehicles.map((v) => (<option key={v.id} value={v.id}>{v.plate} - {v.brand} {v.model}</option>))}
                   </select>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Categoría</label>
-                  <select name="category" required className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white dark:bg-gray-700 dark:text-white">
-                    <option value="revision">Revisión</option>
-                    <option value="cambio_aceite">Cambio de aceite</option>
-                    <option value="frenos">Frenos</option>
-                    <option value="llantas">Llantas</option>
-                    <option value="motor">Motor</option>
-                    <option value="otro">Otro</option>
-                  </select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo</label>
+                    <select name="type" required className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white dark:bg-gray-700 dark:text-white">
+                      <option value="preventivo">Preventivo</option>
+                      <option value="correctivo">Correctivo</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Categoría</label>
+                    <select name="category" required className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white dark:bg-gray-700 dark:text-white">
+                      <option value="revision">Revisión</option>
+                      <option value="cambio_aceite">Cambio de aceite</option>
+                      <option value="frenos">Frenos</option>
+                      <option value="llantas">Llantas</option>
+                      <option value="motor">Motor</option>
+                      <option value="otro">Otro</option>
+                    </select>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
-                <textarea name="description" required rows={2} className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white dark:bg-gray-700 dark:text-white" placeholder="Descripción del mantenimiento..." />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Costo ($)</label>
-                <input type="number" name="cost" required min={0} className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white dark:bg-gray-700 dark:text-white" placeholder="50000" />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl">Cancelar</button>
-                <button type="submit" className="flex-1 px-6 py-2 bg-primary text-white rounded-xl font-medium hover:bg-primary-800">Guardar</button>
-              </div>
-            </form>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
+                  <textarea name="description" required rows={2} className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white dark:bg-gray-700 dark:text-white" placeholder="Descripción del mantenimiento..." />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Costo ($)</label>
+                  <input type="number" name="cost" required min={0} className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white dark:bg-gray-700 dark:text-white" placeholder="50000" />
+                </div>
+
+                {/* Repuestos utilizados */}
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Package className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Repuestos utilizados <span className="font-normal text-gray-400">(opcional)</span></label>
+                  </div>
+
+                  {repuestosSeleccionados.length > 0 && (
+                    <div className="space-y-2 mb-3">
+                      {repuestosSeleccionados.map((sel) => {
+                        const rep = repuestos.find(r => r.id === sel.repuestoId)
+                        if (!rep) return null
+                        return (
+                          <div key={sel.repuestoId} className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/50 rounded-xl px-3 py-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                {rep.nombre}
+                                {rep.vehiculo?.plate && <span className="text-gray-400 font-normal"> · {rep.vehiculo.plate}</span>}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                Stock: {rep.cantidadActual} · {formatCurrency(rep.precioUnitario)}/u
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="number"
+                                min={1}
+                                max={rep.cantidadActual}
+                                value={sel.cantidad}
+                                onChange={(e) => cambiarCantidad(sel.repuestoId, Number(e.target.value) || 1)}
+                                className="w-16 px-2 py-1 text-sm text-center border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => quitarRepuesto(sel.repuestoId)}
+                                className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                aria-label="Quitar repuesto"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {repuestosDisponibles.length > 0 ? (
+                    <select
+                      value=""
+                      onChange={(e) => agregarRepuesto(e.target.value)}
+                      className="w-full px-4 py-2 border border-dashed border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white outline-none text-sm"
+                    >
+                      <option value="">+ Agregar repuesto...</option>
+                      {repuestosDisponibles.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.nombre} — stock: {r.cantidadActual}{r.vehiculo?.plate ? ` · ${r.vehiculo.plate}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  ) : repuestos.length === 0 ? (
+                    <p className="text-xs text-gray-400 dark:text-gray-500">No hay repuestos registrados</p>
+                  ) : repuestosSeleccionados.length > 0 && repuestosDisponibles.length === 0 ? (
+                    <p className="text-xs text-gray-400 dark:text-gray-500">Todos los repuestos con stock fueron agregados</p>
+                  ) : null}
+                </div>
+              </form>
+            </div>
+
+            <div className="flex gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+              <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl" disabled={submitting}>Cancelar</button>
+              <button type="submit" form="maintenance-form" disabled={submitting} className="flex-1 px-6 py-2 bg-primary text-white rounded-xl font-medium hover:bg-primary-800 disabled:opacity-50">
+                {submitting ? 'Guardando...' : 'Guardar'}
+              </button>
+            </div>
           </div>
         </div>
       )}
