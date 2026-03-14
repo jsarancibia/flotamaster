@@ -158,16 +158,17 @@ model WeeklyPayment {
 }
 
 model Repuesto {
-  id            String   @id @default(cuid())
-  nombre        String   @map("nombre")
-  descripcion   String?  @map("descripcion")
-  vehiculo      Vehicle? @relation(fields: [vehiculoId], references: [id])
-  vehiculoId    String?  @map("vehiculo_id")
-  cantidad      Int      @map("cantidad")
-  precioUnitario Float   @map("precio_unitario")
-  fechaCompra   DateTime @default(now()) @map("fecha_compra")
-  proveedor     String?  @map("proveedor")
-  createdAt     DateTime @default(now()) @map("created_at")
+  id               String   @id @default(cuid())
+  nombre           String   @map("nombre")
+  descripcion      String?  @map("descripcion")
+  vehiculo         Vehicle? @relation(fields: [vehiculoId], references: [id])
+  vehiculoId       String?  @map("vehiculo_id")
+  cantidadComprada Int      @map("cantidad_comprada")
+  cantidadActual   Int      @map("cantidad_actual")
+  precioUnitario   Float    @map("precio_unitario")
+  fechaCompra      DateTime @default(now()) @map("fecha_compra")
+  proveedor        String?  @map("proveedor")
+  createdAt        DateTime @default(now()) @map("created_at")
 
   @@index([vehiculoId])
   @@index([fechaCompra])

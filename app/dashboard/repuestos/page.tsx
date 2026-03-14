@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Package, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { Package, Pencil, Plus, Trash2, X, Minus } from 'lucide-react'
 import ConfirmModal from '@/components/ConfirmModal'
 import { formatCurrencyCLP, formatDateDDMMYYYY } from '@/lib/format'
 
@@ -17,7 +17,8 @@ type Repuesto = {
   id: string
   nombre: string
   descripcion: string | null
-  cantidad: number
+  cantidadComprada: number
+  cantidadActual: number
   precioUnitario: number
   proveedor: string | null
   fechaCompra: string
@@ -41,6 +42,16 @@ function dateInputToUtcNoonIso(value: string) {
   return new Date(Date.UTC(y, mo - 1, d, 12, 0, 0)).toISOString()
 }
 
+function StockBadge({ comprada, actual }: { comprada: number; actual: number }) {
+  if (actual <= 0) {
+    return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">Agotado</span>
+  }
+  if (actual <= Math.ceil(comprada * 0.25)) {
+    return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">Bajo</span>
+  }
+  return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">En stock</span>
+}
+
 export default function RepuestosPage() {
   const router = useRouter()
 
@@ -50,6 +61,10 @@ export default function RepuestosPage() {
 
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState<Repuesto | null>(null)
+
+  const [showUsarModal, setShowUsarModal] = useState(false)
+  const [usarRepuesto, setUsarRepuesto] = useState<Repuesto | null>(null)
+  const [cantidadUsar, setCantidadUsar] = useState(1)
 
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -111,6 +126,51 @@ export default function RepuestosPage() {
     setError(null)
   }
 
+  const openUsar = (r: Repuesto) => {
+    setUsarRepuesto(r)
+    setCantidadUsar(1)
+    setError(null)
+    setShowUsarModal(true)
+  }
+
+  const handleUsar = async () => {
+    if (!usarRepuesto) return
+    setSubmitting(true)
+    setError(null)
+
+    try {
+      const res = await fetch('/api/repuestos', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id: usarRepuesto.id, cantidadUsar }),
+      })
+
+      const json = await res.json().catch(() => ({}))
+
+      if (res.status === 401) {
+        router.push('/login')
+        return
+      }
+
+      if (!res.ok) {
+        setError(json?.error || 'Error al descontar stock')
+        setSubmitting(false)
+        return
+      }
+
+      setSuccess(`Stock actualizado: -${cantidadUsar} unidad(es) de ${usarRepuesto.nombre}`)
+      setShowUsarModal(false)
+      setUsarRepuesto(null)
+      await fetchRepuestos()
+      setTimeout(() => setSuccess(null), 2500)
+    } catch {
+      setError('Error de conexión')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setSubmitting(true)
@@ -124,14 +184,14 @@ export default function RepuestosPage() {
       vehiculoId: (formData.get('vehiculoId') as string) || null,
       nombre: (formData.get('nombre') as string) || '',
       descripcion: (formData.get('descripcion') as string) || '',
-      cantidad: (formData.get('cantidad') as string) || '1',
+      cantidadComprada: (formData.get('cantidadComprada') as string) || '1',
       precioUnitario: (formData.get('precioUnitario') as string) || '0',
       proveedor: (formData.get('proveedor') as string) || '',
       fechaCompra: (formData.get('fechaCompra') as string) || '',
     }
 
     const nombreTrim = String(payload.nombre || '').trim()
-    const cantidadNum = Number.parseInt(String(payload.cantidad ?? ''), 10)
+    const cantidadNum = Number.parseInt(String(payload.cantidadComprada ?? ''), 10)
     const precioNum = Number.parseFloat(String(payload.precioUnitario ?? ''))
     if (!nombreTrim) {
       setError('El nombre es obligatorio')
@@ -233,7 +293,19 @@ export default function RepuestosPage() {
   }
 
   const totalGasto = useMemo(() => {
-    return repuestos.reduce((acc, r) => acc + (Number(r.cantidad) || 0) * (Number(r.precioUnitario) || 0), 0)
+    return repuestos.reduce((acc, r) => acc + (Number(r.cantidadComprada) || 0) * (Number(r.precioUnitario) || 0), 0)
+  }, [repuestos])
+
+  const totalEnStock = useMemo(() => {
+    return repuestos.reduce((acc, r) => acc + (Number(r.cantidadActual) || 0), 0)
+  }, [repuestos])
+
+  const totalUsados = useMemo(() => {
+    return repuestos.reduce((acc, r) => acc + ((Number(r.cantidadComprada) || 0) - (Number(r.cantidadActual) || 0)), 0)
+  }, [repuestos])
+
+  const agotados = useMemo(() => {
+    return repuestos.filter(r => (Number(r.cantidadActual) || 0) <= 0).length
   }, [repuestos])
 
   return (
@@ -241,7 +313,7 @@ export default function RepuestosPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="font-heading text-3xl font-bold text-gray-900 dark:text-white">Repuestos</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">Registro de artículos y repuestos (no mantenimientos)</p>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Control de stock y registro de repuestos</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -273,13 +345,24 @@ export default function RepuestosPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700">
-          <p className="text-xs text-gray-500 dark:text-gray-400">Repuestos registrados</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Registrados</p>
           <p className="text-2xl font-bold text-gray-900 dark:text-white">{loading ? '—' : repuestos.length}</p>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 md:col-span-2">
-          <p className="text-xs text-gray-500 dark:text-gray-400">Gasto total (lista)</p>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700">
+          <p className="text-xs text-gray-500 dark:text-gray-400">En stock</p>
+          <p className="text-2xl font-bold text-green-600 dark:text-green-400">{loading ? '—' : totalEnStock}</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700">
+          <p className="text-xs text-gray-500 dark:text-gray-400">Usados</p>
+          <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{loading ? '—' : totalUsados}</p>
+          {!loading && agotados > 0 && (
+            <p className="text-xs text-red-500 mt-1">{agotados} agotado{agotados > 1 ? 's' : ''}</p>
+          )}
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700">
+          <p className="text-xs text-gray-500 dark:text-gray-400">Gasto total</p>
           <p className="text-2xl font-bold text-gray-900 dark:text-white">{loading ? '—' : formatCurrencyCLP(totalGasto)}</p>
         </div>
       </div>
@@ -291,9 +374,11 @@ export default function RepuestosPage() {
               <tr>
                 <th className="text-left px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">Vehículo</th>
                 <th className="text-left px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">Nombre</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">Descripción</th>
-                <th className="text-right px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">Cantidad</th>
-                <th className="text-right px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">Precio unitario</th>
+                <th className="text-right px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">Comprados</th>
+                <th className="text-right px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">En stock</th>
+                <th className="text-right px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">Usados</th>
+                <th className="text-center px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">Estado</th>
+                <th className="text-right px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">P. unitario</th>
                 <th className="text-right px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">Costo total</th>
                 <th className="text-left px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">Proveedor</th>
                 <th className="text-left px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">Fecha</th>
@@ -303,27 +388,43 @@ export default function RepuestosPage() {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">Cargando...</td>
+                  <td colSpan={11} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">Cargando...</td>
                 </tr>
               ) : repuestos.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">No hay repuestos registrados</td>
+                  <td colSpan={11} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">No hay repuestos registrados</td>
                 </tr>
               ) : (
                 repuestos.map((r) => {
-                  const costoTotal = (Number(r.cantidad) || 0) * (Number(r.precioUnitario) || 0)
+                  const costoTotal = (Number(r.cantidadComprada) || 0) * (Number(r.precioUnitario) || 0)
+                  const usados = (Number(r.cantidadComprada) || 0) - (Number(r.cantidadActual) || 0)
                   return (
                     <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="px-6 py-4 text-gray-900 dark:text-white font-medium whitespace-nowrap">{r.vehiculo?.plate || 'General'}</td>
                       <td className="px-6 py-4 text-gray-600 dark:text-gray-300 whitespace-nowrap">{r.nombre}</td>
-                      <td className="px-6 py-4 text-gray-600 dark:text-gray-300 min-w-[240px]">{r.descripcion || '—'}</td>
-                      <td className="px-6 py-4 text-right text-gray-900 dark:text-white">{r.cantidad}</td>
+                      <td className="px-6 py-4 text-right text-gray-900 dark:text-white">{r.cantidadComprada}</td>
+                      <td className="px-6 py-4 text-right font-semibold text-gray-900 dark:text-white">{r.cantidadActual}</td>
+                      <td className="px-6 py-4 text-right text-gray-500 dark:text-gray-400">{usados}</td>
+                      <td className="px-6 py-4 text-center">
+                        <StockBadge comprada={r.cantidadComprada} actual={r.cantidadActual} />
+                      </td>
                       <td className="px-6 py-4 text-right text-gray-900 dark:text-white">{formatCurrencyCLP(Number(r.precioUnitario) || 0)}</td>
                       <td className="px-6 py-4 text-right font-semibold text-gray-900 dark:text-white">{formatCurrencyCLP(costoTotal)}</td>
                       <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{r.proveedor || '—'}</td>
                       <td className="px-6 py-4 text-gray-500 dark:text-gray-400 whitespace-nowrap">{formatDateDDMMYYYY(r.fechaCompra)}</td>
                       <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-1.5">
+                          {r.cantidadActual > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => openUsar(r)}
+                              className="p-2 rounded-lg border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40"
+                              aria-label="Usar repuesto"
+                              title="Usar / Descontar stock"
+                            >
+                              <Minus className="w-4 h-4" />
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => openEdit(r)}
@@ -428,14 +529,14 @@ export default function RepuestosPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cantidad</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cantidad comprada</label>
                   <input
-                    name="cantidad"
+                    name="cantidadComprada"
                     type="number"
                     min={1}
                     step={1}
                     required
-                    defaultValue={String(editing?.cantidad ?? 1)}
+                    defaultValue={String(editing?.cantidadComprada ?? 1)}
                     className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white outline-none"
                   />
                 </div>
@@ -463,6 +564,13 @@ export default function RepuestosPage() {
                 </div>
               </div>
 
+              {editing && (
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-3 text-sm text-gray-600 dark:text-gray-300">
+                  <span className="font-medium">Stock actual:</span> {editing.cantidadActual} unidades &middot;{' '}
+                  <span className="font-medium">Usados:</span> {editing.cantidadComprada - editing.cantidadActual}
+                </div>
+              )}
+
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
@@ -481,6 +589,58 @@ export default function RepuestosPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showUsarModal && usarRepuesto && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-heading text-lg font-bold dark:text-white">Usar repuesto</h3>
+              <button onClick={() => setShowUsarModal(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" aria-label="Cerrar">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">
+              <span className="font-medium">{usarRepuesto.nombre}</span>
+              {usarRepuesto.vehiculo?.plate && <span className="text-gray-400"> · {usarRepuesto.vehiculo.plate}</span>}
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Disponible: <span className="font-semibold text-gray-900 dark:text-white">{usarRepuesto.cantidadActual}</span> unidades
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cantidad a usar</label>
+              <input
+                type="number"
+                min={1}
+                max={usarRepuesto.cantidadActual}
+                value={cantidadUsar}
+                onChange={(e) => setCantidadUsar(Math.max(1, Math.min(usarRepuesto.cantidadActual, Number(e.target.value) || 1)))}
+                className="w-full px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 dark:text-white outline-none"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowUsarModal(false)}
+                className="flex-1 px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl"
+                disabled={submitting}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleUsar}
+                disabled={submitting || cantidadUsar <= 0 || cantidadUsar > usarRepuesto.cantidadActual}
+                className="flex-1 px-6 py-2 bg-amber-500 text-white rounded-xl font-medium hover:bg-amber-600 disabled:opacity-50"
+              >
+                {submitting ? 'Descontando...' : `Usar ${cantidadUsar}`}
+              </button>
+            </div>
           </div>
         </div>
       )}

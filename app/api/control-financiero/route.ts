@@ -28,8 +28,8 @@ function monthLabel(i0to11: number) {
   return mm
 }
 
-function repuestoCostoTotal(r: { cantidad: unknown; precioUnitario: unknown }) {
-  const cantidad = Number(r.cantidad) || 0
+function repuestoCostoTotal(r: { cantidadComprada?: unknown; cantidad?: unknown; precioUnitario: unknown }) {
+  const cantidad = Number(r.cantidadComprada ?? r.cantidad) || 0
   const precioUnitario = Number(r.precioUnitario) || 0
   return cantidad * precioUnitario
 }
@@ -174,7 +174,7 @@ export async function GET(request: NextRequest) {
             fechaCompra: { gte: yearR.start, lt: yearR.end },
             ...(vehiculoId ? { vehiculoId } : {}),
           },
-          select: { fechaCompra: true, cantidad: true, precioUnitario: true },
+          select: { fechaCompra: true, cantidadComprada: true, precioUnitario: true },
         }),
       ])
 
@@ -215,7 +215,7 @@ export async function GET(request: NextRequest) {
         if (d.getFullYear() !== y) continue
         const idx = d.getMonth()
         ingresosVsGastos[idx].gastos += repuestoCostoTotal({
-          cantidad: Number(r.cantidad) || 0,
+          cantidadComprada: Number(r.cantidadComprada) || 0,
           precioUnitario: Number(r.precioUnitario) || 0,
         })
       }
