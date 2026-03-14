@@ -774,6 +774,7 @@ export default function FinancesPage() {
                           <button
                             type="button"
                             onClick={async () => {
+                              if (!p.comprobanteUrl) return
                               const res = await fetch(p.comprobanteUrl)
                               const blob = await res.blob()
                               const url = URL.createObjectURL(blob)
