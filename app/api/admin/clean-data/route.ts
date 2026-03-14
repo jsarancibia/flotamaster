@@ -9,15 +9,36 @@ export async function POST(request: NextRequest) {
   try {
     await requireAuth()
 
-    await prisma.expense.deleteMany({})
-    await prisma.maintenance.deleteMany({})
-    await prisma.weeklyPayment.deleteMany({})
-    await prisma.income.deleteMany({})
-    await prisma.rental.deleteMany({})
+    const result = await prisma.$transaction(async (tx) => {
+      const expenses = await tx.expense.deleteMany({})
+      const pagos = await tx.pagoSemanal.deleteMany({})
+      const weeklyPayments = await tx.weeklyPayment.deleteMany({})
+      const incomes = await tx.income.deleteMany({})
+      const rentals = await tx.rental.deleteMany({})
+      const repuestos = await tx.repuesto.deleteMany({})
+      const maintenances = await tx.maintenance.deleteMany({})
+      const drivers = await tx.driver.deleteMany({})
+      const vehicles = await tx.vehicle.deleteMany({})
 
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Financial data cleaned successfully. Users and authentication preserved.' 
+      return {
+        expenses: expenses.count,
+        pagos: pagos.count,
+        weeklyPayments: weeklyPayments.count,
+        incomes: incomes.count,
+        rentals: rentals.count,
+        repuestos: repuestos.count,
+        maintenances: maintenances.count,
+        drivers: drivers.count,
+        vehicles: vehicles.count,
+      }
+    })
+
+    const total = Object.values(result).reduce((a, b) => a + b, 0)
+
+    return NextResponse.json({
+      success: true,
+      message: `Base de datos limpia. ${total} registros eliminados.`,
+      detalle: result,
     })
   } catch (error: any) {
     console.error('Clean data error:', error)
