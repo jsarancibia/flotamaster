@@ -16,15 +16,65 @@ export async function POST(
     const action = formData.get('_action')
 
     if (action === 'delete') {
-      await prisma.vehicle.delete({
-        where: { id: params.id }
+      const id = params.id
+
+      const vehicle = await prisma.vehicle.findUnique({
+        where: { id },
+        include: {
+          driver: { select: { id: true } },
+          _count: {
+            select: {
+              rentals: true,
+              maintenances: true,
+              expenses: true,
+              incomes: true,
+              weeklyPayments: true,
+              pagosSemanales: true,
+              repuestos: true
+            }
+          }
+        }
       })
-      return NextResponse.redirect(new URL('/dashboard/vehicles', request.url))
+
+      if (!vehicle) {
+        return NextResponse.json({ error: 'Vehículo no encontrado' }, { status: 404 })
+      }
+
+      const hasDriver = !!vehicle.driver
+      const hasRelations =
+        hasDriver ||
+        vehicle._count.rentals > 0 ||
+        vehicle._count.maintenances > 0 ||
+        vehicle._count.expenses > 0 ||
+        vehicle._count.incomes > 0 ||
+        vehicle._count.weeklyPayments > 0 ||
+        vehicle._count.pagosSemanales > 0 ||
+        vehicle._count.repuestos > 0
+
+      if (hasRelations) {
+        return NextResponse.json(
+          {
+            error:
+              'No se puede eliminar el vehículo porque tiene registros asociados (chofer asignado, alquileres, mantenimientos, gastos, ingresos, pagos semanales o repuestos).'
+          },
+          { status: 400 }
+        )
+      }
+
+      await prisma.vehicle.delete({ where: { id } })
+      return NextResponse.json({ success: true })
     }
 
     return NextResponse.json({ error: 'Acción no válida' }, { status: 400 })
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Vehicle action error:', error)
+    const prismaError = error as { code?: string }
+    if (prismaError?.code === 'P2003') {
+      return NextResponse.json(
+        { error: 'No se puede eliminar porque tiene registros asociados.' },
+        { status: 400 }
+      )
+    }
     return NextResponse.json(
       { error: 'Error en la acción' },
       { status: 500 }

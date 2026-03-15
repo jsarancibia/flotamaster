@@ -101,7 +101,12 @@ export async function DELETE(request: NextRequest) {
 
     const driver = await prisma.driver.findUnique({
       where: { id },
-      include: { vehicle: true, rentals: true }
+      include: {
+        vehicle: true,
+        rentals: true,
+        weeklyPayments: true,
+        pagosSemanales: true
+      }
     })
 
     if (!driver) {
@@ -111,9 +116,18 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    if (driver.vehicle || driver.rentals.length > 0) {
+    const hasRelations =
+      !!driver.vehicle ||
+      driver.rentals.length > 0 ||
+      driver.weeklyPayments.length > 0 ||
+      driver.pagosSemanales.length > 0
+
+    if (hasRelations) {
       return NextResponse.json(
-        { error: 'No se puede eliminar: el chofer tiene vehículo o rentals asociados' },
+        {
+          error:
+            'No se puede eliminar porque tiene registros asociados (vehículo asignado, alquileres o pagos semanales).'
+        },
         { status: 400 }
       )
     }
@@ -121,8 +135,15 @@ export async function DELETE(request: NextRequest) {
     await prisma.driver.delete({ where: { id } })
 
     return NextResponse.json({ success: true })
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Driver delete error:', error)
+    const prismaError = error as { code?: string }
+    if (prismaError?.code === 'P2003') {
+      return NextResponse.json(
+        { error: 'No se puede eliminar porque tiene registros asociados.' },
+        { status: 400 }
+      )
+    }
     return NextResponse.json(
       { error: 'Error al eliminar chofer' },
       { status: 500 }

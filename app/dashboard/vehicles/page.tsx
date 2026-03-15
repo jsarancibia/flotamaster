@@ -179,17 +179,34 @@ export default function VehiclesPage() {
     if (!confirmDeleteId) return
 
     try {
+      setError(null)
       const formData = new FormData()
       formData.append('_action', 'delete')
 
-      await fetch(`/api/vehicles/${confirmDeleteId}`, {
+      const res = await fetch(`/api/vehicles/${confirmDeleteId}`, {
         method: 'POST',
         credentials: 'include',
         body: formData,
       })
+
+      const data = await res.json().catch(() => ({}))
+
+      if (res.status === 401) {
+        router.push('/login')
+        return
+      }
+
+      if (!res.ok) {
+        setError(data.error || 'No se puede eliminar el vehículo.')
+        setConfirmDeleteOpen(false)
+        setConfirmDeleteId(null)
+        return
+      }
+
       fetchVehicles()
     } catch (error) {
       console.error('Error deleting vehicle:', error)
+      setError('Error de conexión al eliminar')
     } finally {
       setConfirmDeleteOpen(false)
       setConfirmDeleteId(null)
