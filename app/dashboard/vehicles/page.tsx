@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Car, Plus, Trash2, Search } from 'lucide-react'
+import { Car, Plus, Trash2, Search, X } from 'lucide-react'
 import ConfirmModal from '@/components/ConfirmModal'
 import { formatCurrencyCLP } from '@/lib/format'
 
@@ -38,6 +38,7 @@ export default function VehiclesPage() {
   const [searchPlate, setSearchPlate] = useState('')
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -154,6 +155,7 @@ export default function VehiclesPage() {
   }
 
   const openEditModal = (vehicle: Vehicle) => {
+    setDeleteError(null)
     setEditingVehicle(vehicle)
     setShowModal(true)
   }
@@ -162,6 +164,7 @@ export default function VehiclesPage() {
     setShowModal(false)
     setEditingVehicle(null)
     setError(null)
+    setDeleteError(null)
   }
 
   const filteredVehicles = useMemo(() => {
@@ -171,6 +174,8 @@ export default function VehiclesPage() {
   }, [vehicles, searchPlate])
 
   const requestDelete = (id: string) => {
+    setError(null)
+    setDeleteError(null)
     setConfirmDeleteId(id)
     setConfirmDeleteOpen(true)
   }
@@ -179,7 +184,7 @@ export default function VehiclesPage() {
     if (!confirmDeleteId) return
 
     try {
-      setError(null)
+      setDeleteError(null)
       const formData = new FormData()
       formData.append('_action', 'delete')
 
@@ -197,16 +202,17 @@ export default function VehiclesPage() {
       }
 
       if (!res.ok) {
-        setError(data.error || 'No se puede eliminar el vehículo.')
+        setDeleteError(data.error || 'No se puede eliminar el vehículo.')
         setConfirmDeleteOpen(false)
         setConfirmDeleteId(null)
         return
       }
 
+      setDeleteError(null)
       fetchVehicles()
     } catch (error) {
       console.error('Error deleting vehicle:', error)
-      setError('Error de conexión al eliminar')
+      setDeleteError('Error de conexión al eliminar')
     } finally {
       setConfirmDeleteOpen(false)
       setConfirmDeleteId(null)
@@ -233,7 +239,10 @@ export default function VehiclesPage() {
             />
           </div>
           <button
-            onClick={() => setShowModal(true)}
+            onClick={() => {
+              setDeleteError(null)
+              setShowModal(true)
+            }}
             className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-medium hover:bg-primary-800 transition-colors"
           >
             <Plus className="w-5 h-5" />
@@ -241,6 +250,15 @@ export default function VehiclesPage() {
           </button>
         </div>
       </div>
+
+      {deleteError && (
+        <div className="p-4 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl flex items-center justify-between">
+          <span>{deleteError}</span>
+          <button type="button" onClick={() => setDeleteError(null)} className="text-red-500 hover:text-red-700 dark:hover:text-red-300" aria-label="Cerrar mensaje">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="text-center py-12 text-gray-500 dark:text-gray-400">Cargando...</div>

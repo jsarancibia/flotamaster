@@ -7,7 +7,7 @@ export const revalidate = 0
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
     await requireAuth()
@@ -16,11 +16,16 @@ export async function POST(
     const action = formData.get('_action')
 
     if (action === 'delete') {
-      const id = params.id
+      const params = await Promise.resolve(context.params)
+      const id = params?.id
+      if (!id || typeof id !== 'string') {
+        return NextResponse.json({ error: 'Vehículo no encontrado' }, { status: 404 })
+      }
 
       const vehicle = await prisma.vehicle.findUnique({
         where: { id },
-        include: {
+        select: {
+          id: true,
           driver: { select: { id: true } },
           _count: {
             select: {
@@ -40,16 +45,17 @@ export async function POST(
         return NextResponse.json({ error: 'Vehículo no encontrado' }, { status: 404 })
       }
 
-      const hasDriver = !!vehicle.driver
+      const c = vehicle._count
+      const hasDriver = vehicle.driver != null
       const hasRelations =
         hasDriver ||
-        vehicle._count.rentals > 0 ||
-        vehicle._count.maintenances > 0 ||
-        vehicle._count.expenses > 0 ||
-        vehicle._count.incomes > 0 ||
-        vehicle._count.weeklyPayments > 0 ||
-        vehicle._count.pagosSemanales > 0 ||
-        vehicle._count.repuestos > 0
+        (c.rentals > 0) ||
+        (c.maintenances > 0) ||
+        (c.expenses > 0) ||
+        (c.incomes > 0) ||
+        (c.weeklyPayments > 0) ||
+        (c.pagosSemanales > 0) ||
+        (c.repuestos > 0)
 
       if (hasRelations) {
         return NextResponse.json(
