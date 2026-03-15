@@ -45,17 +45,25 @@ export async function POST(
         return NextResponse.json({ error: 'Vehículo no encontrado' }, { status: 404 })
       }
 
-      const c = vehicle._count
-      const hasDriver = vehicle.driver != null
+      const c = vehicle._count ?? {}
+      const rentals = Number(c.rentals ?? 0)
+      const maintenances = Number(c.maintenances ?? 0)
+      const expenses = Number(c.expenses ?? 0)
+      const incomes = Number(c.incomes ?? 0)
+      const weeklyPayments = Number(c.weeklyPayments ?? 0)
+      const pagosSemanales = Number(c.pagosSemanales ?? 0)
+      const repuestos = Number(c.repuestos ?? 0)
+
+      const hasDriver = vehicle.driver != null && typeof (vehicle.driver as { id?: string })?.id === 'string'
       const hasRelations =
         hasDriver ||
-        (c.rentals > 0) ||
-        (c.maintenances > 0) ||
-        (c.expenses > 0) ||
-        (c.incomes > 0) ||
-        (c.weeklyPayments > 0) ||
-        (c.pagosSemanales > 0) ||
-        (c.repuestos > 0)
+        rentals > 0 ||
+        maintenances > 0 ||
+        expenses > 0 ||
+        incomes > 0 ||
+        weeklyPayments > 0 ||
+        pagosSemanales > 0 ||
+        repuestos > 0
 
       if (hasRelations) {
         return NextResponse.json(
