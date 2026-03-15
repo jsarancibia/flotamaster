@@ -33,8 +33,9 @@ export async function POST(
           category: 'mantenimiento',
           description: `Mantenimiento ${maintenance.type} - ${maintenance.category}: ${maintenance.description}`,
           amount: maintenance.cost,
-          date: new Date()
-        } as any
+          date: new Date(),
+          maintenanceId: maintenance.id
+        }
       })
     }
 

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Wrench, Plus, AlertCircle, CheckCircle, Car, X, Package, Trash2 } from 'lucide-react'
+import ConfirmModal from '@/components/ConfirmModal'
 import { formatCurrencyCLP, formatDateDDMMYYYY } from '@/lib/format'
 
 interface Vehicle {
@@ -66,6 +67,9 @@ export default function MaintenancesPage() {
   const router = useRouter()
 
   const [repuestosSeleccionados, setRepuestosSeleccionados] = useState<RepuestoSeleccionado[]>([])
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const fetchMaintenances = useCallback(async () => {
     try {
@@ -245,6 +249,47 @@ export default function MaintenancesPage() {
     setShowModal(true)
   }
 
+  const requestDelete = (id: string) => {
+    setConfirmDeleteId(id)
+    setConfirmDeleteOpen(true)
+  }
+
+  const handleDelete = async () => {
+    if (!confirmDeleteId) return
+    setDeleting(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/maintenances/${confirmDeleteId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.status === 401) {
+        router.push('/login')
+        return
+      }
+      if (!res.ok) {
+        setError(data.error || 'Error al eliminar mantenimiento')
+        setConfirmDeleteOpen(false)
+        setConfirmDeleteId(null)
+        return
+      }
+      setSuccess('Mantenimiento eliminado correctamente')
+      setConfirmDeleteOpen(false)
+      setConfirmDeleteId(null)
+      await fetchMaintenances()
+      await fetchVehicles()
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (err) {
+      console.error('Error deleting maintenance:', err)
+      setError('Error de conexión al eliminar')
+    } finally {
+      setDeleting(false)
+      setConfirmDeleteOpen(false)
+      setConfirmDeleteId(null)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -382,9 +427,18 @@ export default function MaintenancesPage() {
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${m.status === 'pendiente' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400' : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'}`}>{m.status}</span>
                         </td>
                         <td className="px-6 py-4">
-                          {m.status === 'pendiente' && (
-                            <button onClick={() => handleComplete(m.id)} className="text-sm text-primary hover:underline">Marcar completado</button>
-                          )}
+                          <div className="flex items-center gap-3">
+                            {m.status === 'pendiente' && (
+                              <button onClick={() => handleComplete(m.id)} className="text-sm text-primary hover:underline">Marcar completado</button>
+                            )}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); requestDelete(m.id); }}
+                              className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                              aria-label="Eliminar mantenimiento"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -521,6 +575,18 @@ export default function MaintenancesPage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={confirmDeleteOpen}
+        title="Eliminar mantenimiento"
+        message="¿Estás seguro de eliminar este mantenimiento? Se eliminará también el gasto asociado (si existe)."
+        confirming={deleting}
+        onCancel={() => {
+          setConfirmDeleteOpen(false)
+          setConfirmDeleteId(null)
+        }}
+        onConfirm={handleDelete}
+      />
     </div>
   )
 }
