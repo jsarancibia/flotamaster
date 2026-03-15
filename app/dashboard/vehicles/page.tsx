@@ -39,7 +39,6 @@ export default function VehiclesPage() {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
-  const [showForceDeleteOption, setShowForceDeleteOption] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -177,7 +176,6 @@ export default function VehiclesPage() {
   const requestDelete = (id: string) => {
     setError(null)
     setDeleteError(null)
-    setShowForceDeleteOption(false)
     setConfirmDeleteId(id)
     setConfirmDeleteOpen(true)
   }
@@ -191,32 +189,39 @@ export default function VehiclesPage() {
       formData.append('_action', 'delete')
       if (force) formData.append('_force', '1')
 
-      const res = await fetch(`/api/vehicles/${confirmDeleteId}`, {
+      let res = await fetch(`/api/vehicles/${confirmDeleteId}`, {
         method: 'POST',
         credentials: 'include',
         body: formData,
       })
-
-      const data = await res.json().catch(() => ({}))
+      let data = await res.json().catch(() => ({}))
 
       if (res.status === 401) {
         router.push('/login')
         return
       }
 
+      if (!res.ok && data.forceDeleteAvailable && !force) {
+        const formDataForce = new FormData()
+        formDataForce.append('_action', 'delete')
+        formDataForce.append('_force', '1')
+        res = await fetch(`/api/vehicles/${confirmDeleteId}`, {
+          method: 'POST',
+          credentials: 'include',
+          body: formDataForce,
+        })
+        data = await res.json().catch(() => ({}))
+      }
+
       if (!res.ok) {
         setDeleteError(data.error || 'No se puede eliminar el vehículo.')
-        if (data.forceDeleteAvailable) {
-          setShowForceDeleteOption(true)
-        } else {
-          setConfirmDeleteOpen(false)
-          setConfirmDeleteId(null)
-        }
+        if (res.status === 404) fetchVehicles()
+        setConfirmDeleteOpen(false)
+        setConfirmDeleteId(null)
         return
       }
 
       setDeleteError(null)
-      setShowForceDeleteOption(false)
       fetchVehicles()
     } catch (error) {
       console.error('Error deleting vehicle:', error)
@@ -495,14 +500,12 @@ export default function VehiclesPage() {
       <ConfirmModal
         open={confirmDeleteOpen}
         title="Eliminar vehículo"
-        message={showForceDeleteOption ? (deleteError || '') + ' ¿Eliminar de todos modos? Se borrarán también los registros asociados (gastos, mantenimientos, etc.).' : '¿Estás seguro de eliminar este vehículo?'}
-        confirmLabel={showForceDeleteOption ? 'Sí, eliminar todo' : undefined}
+        message="¿Estás seguro de eliminar este vehículo? Si tiene registros asociados se eliminarán también."
         onCancel={() => {
           setConfirmDeleteOpen(false)
           setConfirmDeleteId(null)
-          setShowForceDeleteOption(false)
         }}
-        onConfirm={() => handleDelete(showForceDeleteOption)}
+        onConfirm={() => handleDelete()}
       />
     </div>
   )
