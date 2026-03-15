@@ -12,6 +12,7 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:clean": "node scripts/clean-data.mjs",
+    "db:delete-vehicle": "node scripts/delete-vehicle-by-plate.mjs",
     "favicons:generate": "node scripts/generate-favicons.mjs"
   },
   "dependencies": {

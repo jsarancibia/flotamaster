@@ -19,7 +19,7 @@ export default async function DashboardLayout({
   }
 
   const navItems: Array<{ href: string; iconName: NavIconName; label: string }> = [
-    { href: '/dashboard', iconName: 'LayoutDashboard', label: 'Dashboard' },
+    { href: '/dashboard', iconName: 'LayoutDashboard', label: 'Panel' },
     { href: '/dashboard/vehicles', iconName: 'Car', label: 'Vehículos' },
     { href: '/dashboard/drivers', iconName: 'Users', label: 'Conductores' },
     { href: '/dashboard/maintenances', iconName: 'Wrench', label: 'Mantenimientos' },

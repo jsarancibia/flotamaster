@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Car, Users, Wrench, FileText, Fuel, AlertTriangle, AlertCircle } from 'lucide-react'
+import { Car, Users, Wrench, AlertCircle } from 'lucide-react'
 
 interface Maintenance {
   id: string
@@ -93,20 +93,6 @@ export default function DashboardPage() {
       color: 'bg-orange-500',
       subtitle: 'Pendientes',
       alert: stats.pendingMaintenances > 0
-    },
-    {
-      title: 'Documentos',
-      value: 0,
-      icon: AlertTriangle,
-      color: 'bg-red-500',
-      subtitle: 'Por vencer'
-    },
-    {
-      title: 'Combustible',
-      value: 0,
-      icon: Fuel,
-      color: 'bg-indigo-500',
-      subtitle: 'Registros del mes'
     },
   ] : []
 
