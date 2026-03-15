@@ -11,6 +11,7 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
+    "db:clean": "node scripts/clean-data.mjs",
     "favicons:generate": "node scripts/generate-favicons.mjs"
   },
   "dependencies": {

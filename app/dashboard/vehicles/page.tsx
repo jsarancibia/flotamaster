@@ -39,6 +39,7 @@ export default function VehiclesPage() {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [showForceDeleteOption, setShowForceDeleteOption] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -176,17 +177,19 @@ export default function VehiclesPage() {
   const requestDelete = (id: string) => {
     setError(null)
     setDeleteError(null)
+    setShowForceDeleteOption(false)
     setConfirmDeleteId(id)
     setConfirmDeleteOpen(true)
   }
 
-  const handleDelete = async () => {
+  const handleDelete = async (force = false) => {
     if (!confirmDeleteId) return
 
     try {
       setDeleteError(null)
       const formData = new FormData()
       formData.append('_action', 'delete')
+      if (force) formData.append('_force', '1')
 
       const res = await fetch(`/api/vehicles/${confirmDeleteId}`, {
         method: 'POST',
@@ -203,12 +206,17 @@ export default function VehiclesPage() {
 
       if (!res.ok) {
         setDeleteError(data.error || 'No se puede eliminar el vehículo.')
-        setConfirmDeleteOpen(false)
-        setConfirmDeleteId(null)
+        if (data.forceDeleteAvailable) {
+          setShowForceDeleteOption(true)
+        } else {
+          setConfirmDeleteOpen(false)
+          setConfirmDeleteId(null)
+        }
         return
       }
 
       setDeleteError(null)
+      setShowForceDeleteOption(false)
       fetchVehicles()
     } catch (error) {
       console.error('Error deleting vehicle:', error)
@@ -487,12 +495,14 @@ export default function VehiclesPage() {
       <ConfirmModal
         open={confirmDeleteOpen}
         title="Eliminar vehículo"
-        message="¿Estás seguro de eliminar este vehículo?"
+        message={showForceDeleteOption ? (deleteError || '') + ' ¿Eliminar de todos modos? Se borrarán también los registros asociados (gastos, mantenimientos, etc.).' : '¿Estás seguro de eliminar este vehículo?'}
+        confirmLabel={showForceDeleteOption ? 'Sí, eliminar todo' : undefined}
         onCancel={() => {
           setConfirmDeleteOpen(false)
           setConfirmDeleteId(null)
+          setShowForceDeleteOption(false)
         }}
-        onConfirm={handleDelete}
+        onConfirm={() => handleDelete(showForceDeleteOption)}
       />
     </div>
   )

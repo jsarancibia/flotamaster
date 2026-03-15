@@ -30,6 +30,26 @@ export async function POST(
         return NextResponse.json({ error: 'Vehículo no encontrado' }, { status: 404 })
       }
 
+      const force = formData.get('_force') === '1' || formData.get('_force') === 'true'
+
+      if (force) {
+        await prisma.$transaction(async (tx) => {
+          const maintIds = await tx.maintenance.findMany({ where: { vehicleId: id }, select: { id: true } }).then((r) => r.map((m) => m.id))
+          await tx.expense.deleteMany({
+            where: { OR: [{ vehicleId: id }, { maintenanceId: { in: maintIds } }] }
+          })
+          await tx.maintenance.deleteMany({ where: { vehicleId: id } })
+          await tx.rental.deleteMany({ where: { vehicleId: id } })
+          await tx.weeklyPayment.deleteMany({ where: { vehicleId: id } })
+          await tx.pagoSemanal.deleteMany({ where: { vehiculoId: id } })
+          await tx.income.deleteMany({ where: { vehicleId: id } })
+          await tx.repuesto.updateMany({ where: { vehiculoId: id }, data: { vehiculoId: null } })
+          await tx.driver.updateMany({ where: { vehicleId: id }, data: { vehicleId: null } })
+          await tx.vehicle.delete({ where: { id } })
+        })
+        return NextResponse.json({ success: true })
+      }
+
       const [
         driversCount,
         rentalsCount,
@@ -60,18 +80,6 @@ export async function POST(
         pagosSemanalesCount > 0 ||
         repuestosCount > 0
 
-      console.log(`[DELETE VEHICLE ${id}] Counts:`, {
-        drivers: driversCount,
-        rentals: rentalsCount,
-        maintenances: maintenancesCount,
-        expenses: expensesCount,
-        incomes: incomesCount,
-        weeklyPayments: weeklyPaymentsCount,
-        pagosSemanales: pagosSemanalesCount,
-        repuestos: repuestosCount,
-        hasRelations
-      })
-
       if (hasRelations) {
         const relations = []
         if (driversCount > 0) relations.push('chofer asignado')
@@ -85,7 +93,8 @@ export async function POST(
 
         return NextResponse.json(
           {
-            error: `No se puede eliminar el vehículo porque tiene: ${relations.join(', ')}.`
+            error: `No se puede eliminar el vehículo porque tiene: ${relations.join(', ')}.`,
+            forceDeleteAvailable: true
           },
           { status: 400 }
         )
