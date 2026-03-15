@@ -22,48 +22,43 @@ export async function POST(
         return NextResponse.json({ error: 'Vehículo no encontrado' }, { status: 404 })
       }
 
-      const vehicle = await prisma.vehicle.findUnique({
+      const exists = await prisma.vehicle.findUnique({
         where: { id },
-        select: {
-          id: true,
-          driver: { select: { id: true } },
-          _count: {
-            select: {
-              rentals: true,
-              maintenances: true,
-              expenses: true,
-              incomes: true,
-              weeklyPayments: true,
-              pagosSemanales: true,
-              repuestos: true
-            }
-          }
-        }
+        select: { id: true }
       })
-
-      if (!vehicle) {
+      if (!exists) {
         return NextResponse.json({ error: 'Vehículo no encontrado' }, { status: 404 })
       }
 
-      const c = vehicle._count ?? {}
-      const rentals = Number(c.rentals ?? 0)
-      const maintenances = Number(c.maintenances ?? 0)
-      const expenses = Number(c.expenses ?? 0)
-      const incomes = Number(c.incomes ?? 0)
-      const weeklyPayments = Number(c.weeklyPayments ?? 0)
-      const pagosSemanales = Number(c.pagosSemanales ?? 0)
-      const repuestos = Number(c.repuestos ?? 0)
+      const [
+        driversCount,
+        rentalsCount,
+        maintenancesCount,
+        expensesCount,
+        incomesCount,
+        weeklyPaymentsCount,
+        pagosSemanalesCount,
+        repuestosCount
+      ] = await Promise.all([
+        prisma.driver.count({ where: { vehicleId: id } }),
+        prisma.rental.count({ where: { vehicleId: id } }),
+        prisma.maintenance.count({ where: { vehicleId: id } }),
+        prisma.expense.count({ where: { vehicleId: id } }),
+        prisma.income.count({ where: { vehicleId: id } }),
+        prisma.weeklyPayment.count({ where: { vehicleId: id } }),
+        prisma.pagoSemanal.count({ where: { vehiculoId: id } }),
+        prisma.repuesto.count({ where: { vehiculoId: id } })
+      ])
 
-      const hasDriver = vehicle.driver != null && typeof (vehicle.driver as { id?: string })?.id === 'string'
       const hasRelations =
-        hasDriver ||
-        rentals > 0 ||
-        maintenances > 0 ||
-        expenses > 0 ||
-        incomes > 0 ||
-        weeklyPayments > 0 ||
-        pagosSemanales > 0 ||
-        repuestos > 0
+        driversCount > 0 ||
+        rentalsCount > 0 ||
+        maintenancesCount > 0 ||
+        expensesCount > 0 ||
+        incomesCount > 0 ||
+        weeklyPaymentsCount > 0 ||
+        pagosSemanalesCount > 0 ||
+        repuestosCount > 0
 
       if (hasRelations) {
         return NextResponse.json(
