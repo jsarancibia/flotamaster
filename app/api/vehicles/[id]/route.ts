@@ -60,11 +60,32 @@ export async function POST(
         pagosSemanalesCount > 0 ||
         repuestosCount > 0
 
+      console.log(`[DELETE VEHICLE ${id}] Counts:`, {
+        drivers: driversCount,
+        rentals: rentalsCount,
+        maintenances: maintenancesCount,
+        expenses: expensesCount,
+        incomes: incomesCount,
+        weeklyPayments: weeklyPaymentsCount,
+        pagosSemanales: pagosSemanalesCount,
+        repuestos: repuestosCount,
+        hasRelations
+      })
+
       if (hasRelations) {
+        const relations = []
+        if (driversCount > 0) relations.push('chofer asignado')
+        if (rentalsCount > 0) relations.push('alquileres')
+        if (maintenancesCount > 0) relations.push('mantenimientos')
+        if (expensesCount > 0) relations.push('gastos')
+        if (incomesCount > 0) relations.push('ingresos')
+        if (weeklyPaymentsCount > 0) relations.push('pagos semanales')
+        if (pagosSemanalesCount > 0) relations.push('pagos semanales (tabla alternativa)')
+        if (repuestosCount > 0) relations.push('repuestos')
+
         return NextResponse.json(
           {
-            error:
-              'No se puede eliminar el vehículo porque tiene registros asociados (chofer asignado, alquileres, mantenimientos, gastos, ingresos, pagos semanales o repuestos).'
+            error: `No se puede eliminar el vehículo porque tiene: ${relations.join(', ')}.`
           },
           { status: 400 }
         )
